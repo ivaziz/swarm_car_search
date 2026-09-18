@@ -154,8 +154,8 @@ swarm_car_search/
 
 ## 7. Thesis Documentation References
 
-- [Complete Graduation Thesis Chapter (Mohammed & Ibrahim)](docs/thesis_chapter_swarm.md)
-- [SLAM Subsystem Integration Guide (Saqr & Mahmoud)](docs/slam_integration_guide.md)
+- [Complete Graduation Thesis Chapter](docs/thesis_chapter_swarm.md)
+- [SLAM Subsystem Integration Guide](docs/slam_integration_guide.md)
 - [Comprehensive User & Developer Guide](docs/user_guide.md)
 - [Theoretical ACO Algorithmic Design](docs/aco_algorithm.md)
 - [System Architecture Specification](docs/architecture.md)
