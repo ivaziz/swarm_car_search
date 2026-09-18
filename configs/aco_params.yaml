@@ -1,0 +1,35 @@
+# ==============================================================================
+# Ant Colony Optimization (ACO) Parameters Configuration
+# ==============================================================================
+
+objective_function_weights:
+  # Score = (tau^alpha * eta^beta * P^gamma * G^delta) / (C^epsilon * Omega^zeta * K^theta)
+  alpha: 1.2       # Weight of positive pheromone trail (exploitation)
+  beta: 1.5        # Weight of information gain / unexplored ratio (exploration)
+  gamma: 1.8       # Weight of target vehicle detection likelihood
+  delta: 1.0       # Weight of search priority / mission urgency
+  epsilon: 1.3     # Penalty exponent for distance / travel cost
+  zeta: 2.0        # Penalty exponent for congestion (other robots targeting area)
+  theta: 1.5       # Penalty exponent for negative/recent visit pheromone
+
+pheromone_dynamics:
+  # Evaporation rates (rho in [0, 1]) per update cycle
+  evaporation_rates:
+    exploration: 0.01  # Slow decay for permanent environmental exploration memory
+    success: 0.05      # Moderate decay for vehicle sighting evidence
+    avoidance: 0.30    # Rapid decay for temporary robot reservation / congestion
+
+  # Deposit amounts (Delta P)
+  deposit_values:
+    exploration_visit: 1.0
+    vehicle_detected: 5.0
+    confirmed_target_match: 20.0
+    active_reservation: 3.0
+
+  # Bounds to prevent numerical underflow / overflow
+  min_pheromone: 0.01
+  max_pheromone: 50.0
+
+stochastic_selection:
+  temperature: 1.0     # Softmax temperature parameter (higher = more exploratory)
+  epsilon_greedy: 0.05 # Probability of picking random valid frontier for exploration

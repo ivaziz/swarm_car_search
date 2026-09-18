@@ -1,0 +1,27 @@
+# ==============================================================================
+# Autonomous Swarm Outdoor Car Search System - Dependencies
+# Target Python Version: >= 3.9
+# ==============================================================================
+#
+# NOTE ON ZERO-DEPENDENCY CORE:
+# The entire core multi-robot swarm system, including the Ant Colony Optimization
+# (ACO) engine, task allocation strategies, stigmergic pheromone maps, robot FSM,
+# simulated kinematics, perception pipeline, ASCII HUD, pure-Python SVG vector
+# rendering, and evaluation suite runs with ZERO EXTERNAL DEPENDENCIES on standard
+# Python (e.g. /usr/bin/python3 on macOS / Linux).
+#
+# The dependencies below are OPTIONAL enhancements for publication-grade Matplotlib
+# dashboard generation, animated GIF compilation, and PyTest runner integration.
+# ==============================================================================
+
+# [Optional] Visualization & Analysis Enhancements (Matplotlib Dashboard & Animated GIF)
+matplotlib>=3.7.0
+numpy>=1.24.0
+pillow>=10.0.0
+
+# [Optional] Configuration File Loading (Built-in YAML parser fallback exists)
+pyyaml>=6.0
+
+# [Optional] Advanced Testing & Coverage Tooling
+pytest>=7.0.0
+pytest-cov>=4.0.0

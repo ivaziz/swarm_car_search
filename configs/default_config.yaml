@@ -1,0 +1,31 @@
+# ==============================================================================
+# Default System Configuration
+# ==============================================================================
+
+system:
+  project_name: "Swarm Autonomous Car Search"
+  version: "0.1.0"
+  log_level: "INFO"
+  random_seed: 42
+
+swarm:
+  num_robots: 3
+  robot_ids: ["robot_1", "robot_2", "robot_3"]
+  heartbeat_interval_sec: 1.0
+  failure_timeout_sec: 5.0
+  reassignment_cooldown_sec: 2.0
+
+navigation:
+  max_linear_velocity: 1.5   # m/s
+  max_angular_velocity: 1.0  # rad/s
+  waypoint_tolerance: 0.5    # meters
+
+communication:
+  backend: "local"           # options: local, ros2, udp
+  simulated_loss_rate: 0.0   # 0.0 - 1.0
+  simulated_latency_ms: 50   # ms
+
+perception:
+  detection_confidence_threshold: 0.70
+  ocr_confidence_threshold: 0.80
+  evidence_capture_enabled: true
