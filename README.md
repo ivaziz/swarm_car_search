@@ -30,11 +30,11 @@ To ensure clean engineering separation and parallel development across the gradu
                   │
                   ▼
           [SLAM Subsystem]
-      (Saqr & Mahmoud's Module)
+      (SLAM Module)
                   │
                   ▼ (SLAMState via ISLAMProvider)
      [Swarm Coordination Engine]
-      (Mohammed & Ibrahim's ACO)
+      (ACO-Based Swarm Coordination)
         ├── Tri-Layer Stigmergic Map (Exploration, Recruitment, Avoidance)
         ├── Multi-Objective Task Scorer (Information Gain, Priors, Distance, Congestion)
         ├── Dynamic Failure Detector & Recovery Manager
