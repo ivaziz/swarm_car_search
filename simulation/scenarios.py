@@ -87,120 +87,39 @@ def create_scenario(scenario_name: str) -> ScenarioConfig:
             is_stolen=True,
         )
         return ScenarioConfig(
-            name="easy_target",
-            description="Scenario A: Reachable target in central intersection. Expect fast discovery and confirmation.",
+            name=name,
+            description="Scenario A: Target easy to detect in central intersection.",
             target_plate=target_plate,
             vehicles=[target],
             start_poses=default_starts,
-            max_steps=80,
+            max_steps=500,
             seed=100,
             zones=[UrbanZone("central_plaza", (20.0, 20.0, 30.0, 30.0), 0.85)],
         )
 
-    elif name in ("hidden_target", "scenario_b"):
-        # Scenario B: Target parked on East street corridor (45.0, 35.0), behind building 4
+    elif name in ("hidden_target", "partially_occluded", "scenario_b"):
+        # Scenario B: Target parked on East street corridor (45.0, 35.0), behind building block
         target = TargetVehicle(
             target_id="target_car_hidden",
             plate_number=target_plate,
             vehicle_class="sedan",
-            color="black",
+            color="dark_gray",
             position=(45.0, 35.0),
             is_stolen=True,
         )
         return ScenarioConfig(
-            name="hidden_target",
-            description="Scenario B: Hidden target behind eastern building block. Requires street corridor exploration.",
+            name=name,
+            description="Scenario B: Target partially occluded behind eastern building block corridor.",
             target_plate=target_plate,
             vehicles=[target],
             start_poses=default_starts,
-            max_steps=120,
+            max_steps=600,
             seed=105,
             zones=[UrbanZone("east_corridor", (40.0, 28.0, 49.0, 42.0), 0.80)],
         )
 
-    elif name in ("target_recruitment", "scenario_c"):
-        # Scenario C: Target spotted in North avenue (25.0, 45.0)
-        target = TargetVehicle(
-            target_id="target_car_recruit",
-            plate_number=target_plate,
-            vehicle_class="sedan",
-            color="silver",
-            position=(25.0, 45.0),
-            is_stolen=True,
-        )
-        return ScenarioConfig(
-            name="target_recruitment",
-            description="Scenario C: Candidate detection recruits nearby swarm robots via stigmergic pheromones.",
-            target_plate=target_plate,
-            vehicles=[target],
-            start_poses=default_starts,
-            max_steps=90,
-            seed=110,
-            zones=[UrbanZone("north_street", (15.0, 40.0, 35.0, 49.0), 0.85)],
-        )
-
-    elif name in ("failure_recovery", "scenario_d"):
-        # Scenario D: Robot 1 assigned to target at (25.0, 25.0), fails at step 25, robot 2 recovers
-        target = TargetVehicle(
-            target_id="target_car_fault",
-            plate_number=target_plate,
-            vehicle_class="sedan",
-            color="dark_gray",
-            position=(25.0, 25.0),
-            is_stolen=True,
-        )
-        return ScenarioConfig(
-            name="failure_recovery",
-            description="Scenario D: Robot failure during search. Swarm reclaims orphaned task and confirms target.",
-            target_plate=target_plate,
-            vehicles=[target],
-            start_poses=default_starts,
-            inject_failure_tick=25,
-            fail_robot_id="robot_1",
-            max_steps=90,
-            seed=115,
-            zones=[UrbanZone("central_plaza", (20.0, 20.0, 30.0, 30.0), 0.85)],
-        )
-
-    elif name in ("false_positive", "scenario_e"):
-        # Scenario E: Multiple non-target vehicles rejected before target confirmed
-        true_target = TargetVehicle(
-            target_id="true_target",
-            plate_number=target_plate,
-            vehicle_class="sedan",
-            color="dark_gray",
-            position=(25.0, 35.0),
-            is_stolen=True,
-        )
-        decoy_1 = TargetVehicle(
-            target_id="decoy_car_1",
-            plate_number="ABC-11223",
-            vehicle_class="sedan",
-            color="white",
-            position=(16.0, 25.0),
-            is_stolen=False,
-        )
-        decoy_2 = TargetVehicle(
-            target_id="decoy_car_2",
-            plate_number="KSA-77665",
-            vehicle_class="sedan",
-            color="red",
-            position=(34.0, 25.0),
-            is_stolen=False,
-        )
-        return ScenarioConfig(
-            name="false_positive",
-            description="Scenario E: Two decoy vehicles rejected via fuzzy plate matching; target vehicle confirmed.",
-            target_plate=target_plate,
-            vehicles=[true_target, decoy_1, decoy_2],
-            start_poses=default_starts,
-            max_steps=160,
-            seed=120,
-            zones=[UrbanZone("north_avenue", (20.0, 30.0, 30.0, 40.0), 0.85)],
-        )
-
-    elif name in ("multiple_vehicles", "scenario_f"):
-        # Scenario F: Urban traffic fleet with target hidden among 4 total vehicles
+    elif name in ("multiple_decoys", "multiple_vehicles", "scenario_c", "false_positive"):
+        # Scenario C: Multiple decoy vehicles with distinct colors, classes, and plates
         true_target = TargetVehicle(
             target_id="target_stolen_car",
             plate_number=target_plate,
@@ -210,38 +129,155 @@ def create_scenario(scenario_name: str) -> ScenarioConfig:
             is_stolen=True,
         )
         decoy_1 = TargetVehicle(
-            target_id="fleet_car_1",
-            plate_number="DXB-10101",
-            vehicle_class="sedan",
+            target_id="decoy_suv_1",
+            plate_number="AD-10294",
+            vehicle_class="suv",
             color="white",
-            position=(25.0, 5.0),
+            position=(10.0, 25.0),
             is_stolen=False,
         )
         decoy_2 = TargetVehicle(
-            target_id="fleet_car_2",
-            plate_number="AUH-99881",
-            vehicle_class="suv",
-            color="black",
-            position=(45.0, 25.0),
+            target_id="decoy_sedan_2",
+            plate_number="SHJ-44910",
+            vehicle_class="sedan",
+            color="red",
+            position=(40.0, 25.0),
             is_stolen=False,
         )
         decoy_3 = TargetVehicle(
-            target_id="fleet_car_3",
-            plate_number="SHJ-33442",
-            vehicle_class="sedan",
+            target_id="decoy_truck_3",
+            plate_number="DXB-99112",
+            vehicle_class="truck",
             color="blue",
-            position=(5.0, 25.0),
+            position=(25.0, 10.0),
             is_stolen=False,
         )
         return ScenarioConfig(
-            name="multiple_vehicles",
-            description="Scenario F: Target correctly identified among a fleet of 4 urban vehicles.",
+            name=name,
+            description="Scenario C: Target verified among fleet of multiple decoy civilian vehicles.",
             target_plate=target_plate,
             vehicles=[true_target, decoy_1, decoy_2, decoy_3],
             start_poses=default_starts,
-            max_steps=100,
-            seed=125,
+            max_steps=500,
+            seed=110,
             zones=[UrbanZone("central_hub", (20.0, 20.0, 30.0, 30.0), 0.85)],
+        )
+
+    elif name in ("noisy_ocr", "poor_ocr", "scenario_d"):
+        # Scenario D: Poor OCR / partial plate reading requiring multi-frame accumulation
+        target = TargetVehicle(
+            target_id="target_car_noisy",
+            plate_number=target_plate,
+            vehicle_class="sedan",
+            color="dark_gray",
+            position=(25.0, 35.0),
+            is_stolen=True,
+        )
+        return ScenarioConfig(
+            name=name,
+            description="Scenario D: Optical noise and character confusion requiring multi-frame temporal voting.",
+            target_plate=target_plate,
+            vehicles=[target],
+            start_poses=default_starts,
+            max_steps=500,
+            seed=115,
+            zones=[UrbanZone("north_lane", (20.0, 30.0, 30.0, 40.0), 0.80)],
+        )
+
+    elif name in ("failure_recovery", "scenario_e"):
+        # Scenario E: One robot fails during search; swarm recovers orphaned tasks dynamically
+        target = TargetVehicle(
+            target_id="target_car_fault",
+            plate_number=target_plate,
+            vehicle_class="sedan",
+            color="dark_gray",
+            position=(25.0, 25.0),
+            is_stolen=True,
+        )
+        return ScenarioConfig(
+            name=name,
+            description="Scenario E: Robot failure during search; scored dynamic reassignment recovers task.",
+            target_plate=target_plate,
+            vehicles=[target],
+            start_poses=default_starts,
+            inject_failure_tick=20,
+            fail_robot_id="robot_1",
+            max_steps=500,
+            seed=120,
+            zones=[UrbanZone("central_plaza", (20.0, 20.0, 30.0, 30.0), 0.85)],
+        )
+
+    elif name in ("cooperative_encounter", "target_recruitment", "scenario_f"):
+        # Scenario F: Two robots encounter candidate area; cooperative convergence & verification
+        target = TargetVehicle(
+            target_id="target_car_coop",
+            plate_number=target_plate,
+            vehicle_class="sedan",
+            color="dark_gray",
+            position=(25.0, 35.0),
+            is_stolen=True,
+        )
+        return ScenarioConfig(
+            name=name,
+            description="Scenario F: Two robots encounter candidate; cooperative deconfliction & verification.",
+            target_plate=target_plate,
+            vehicles=[target],
+            start_poses=default_starts,
+            max_steps=600,
+            seed=125,
+            zones=[UrbanZone("north_avenue", (15.0, 25.0, 35.0, 45.0), 0.85)],
+        )
+
+    elif name in ("far_target", "scenario_g"):
+        # Scenario G: Target located far from initial robot positions (North-East sector, 40.0, 40.0)
+        target = TargetVehicle(
+            target_id="target_car_far",
+            plate_number=target_plate,
+            vehicle_class="sedan",
+            color="dark_gray",
+            position=(35.0, 25.0),
+            is_stolen=True,
+        )
+        # All robots start in South-West corner to maximize travel distance
+        south_starts = [
+            (6.0, 6.0, 0.0),
+            (8.0, 6.0, 0.0),
+            (6.0, 8.0, 0.0),
+            (8.0, 8.0, 0.0),
+        ]
+        return ScenarioConfig(
+            name=name,
+            description="Scenario G: Target located in distant corner far from robot spawn origins.",
+            target_plate=target_plate,
+            vehicles=[target],
+            start_poses=south_starts,
+            max_steps=1500,
+            seed=130,
+            zones=[UrbanZone("distant_corner", (30.0, 30.0, 48.0, 48.0), 0.80)],
+        )
+
+    elif name in ("low_prior_target", "scenario_h"):
+        # Scenario H: Target located in a low-prior region; Bayesian belief updates from visual evidence
+        target = TargetVehicle(
+            target_id="target_car_low_prior",
+            plate_number=target_plate,
+            vehicle_class="sedan",
+            color="dark_gray",
+            position=(6.0, 25.0),
+            is_stolen=True,
+        )
+        return ScenarioConfig(
+            name=name,
+            description="Scenario H: Target in low-probability zone; swarm discovers via Bayesian belief propagation.",
+            target_plate=target_plate,
+            vehicles=[target],
+            start_poses=default_starts,
+            max_steps=1000,
+            seed=135,
+            zones=[
+                UrbanZone("central_distractor", (20.0, 20.0, 30.0, 30.0), 0.90),
+                UrbanZone("west_low_prior", (2.0, 20.0, 10.0, 30.0), 0.20),
+            ],
         )
 
     else:

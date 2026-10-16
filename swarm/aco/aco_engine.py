@@ -2,7 +2,7 @@
 Ant Colony Optimization (ACO) Task Allocation Engine with Softmax Action Selection.
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 import math
 import random
 from interfaces.slam_interface import Pose2D
@@ -46,6 +46,9 @@ class ACOEngine:
         robot_pose: Pose2D,
         pheromone_map: Optional[PheromoneMap] = None,
         peer_commitments: Optional[Dict[str, str]] = None,
+        target_probability_map: Optional[Any] = None,
+        search_memory: Optional[Any] = None,
+        battery_level: float = 1.0,
     ) -> List[Tuple[SearchTask, float]]:
         """
         Computes attractiveness scores for all candidate tasks and returns them
@@ -61,6 +64,9 @@ class ACOEngine:
                 robot_pose=robot_pose,
                 pheromone_map=pheromone_map,
                 congestion_count=congestion,
+                target_probability_map=target_probability_map,
+                search_memory=search_memory,
+                battery_level=battery_level,
             )
             scored.append((task, score))
 
@@ -74,6 +80,9 @@ class ACOEngine:
         pheromone_map: Optional[PheromoneMap] = None,
         peer_commitments: Optional[Dict[str, str]] = None,
         rng: Optional[random.Random] = None,
+        target_probability_map: Optional[Any] = None,
+        search_memory: Optional[Any] = None,
+        battery_level: float = 1.0,
     ) -> Optional[SearchTask]:
         """
         Selects a task using ACO Boltzmann exploration / exploitation strategy.
@@ -84,6 +93,9 @@ class ACOEngine:
             pheromone_map: Optional global or local pheromone map.
             peer_commitments: Dict mapping peer_robot_id -> assigned_task_id.
             rng: Optional seeded random number generator for reproducibility.
+            target_probability_map: Optional TargetProbabilityMap belief grid.
+            search_memory: Optional SearchSpatialMemory tracker.
+            battery_level: Normalized robot battery/health.
 
         Returns:
             Selected SearchTask, or None if no valid candidate exists.
@@ -105,6 +117,9 @@ class ACOEngine:
                 robot_pose=robot_pose,
                 pheromone_map=pheromone_map,
                 peer_commitments=peer_commitments,
+                target_probability_map=target_probability_map,
+                search_memory=search_memory,
+                battery_level=battery_level,
             )
             return scored_tasks[0][0] if scored_tasks else None
 
@@ -119,6 +134,9 @@ class ACOEngine:
             robot_pose=robot_pose,
             pheromone_map=pheromone_map,
             peer_commitments=peer_commitments,
+            target_probability_map=target_probability_map,
+            search_memory=search_memory,
+            battery_level=battery_level,
         )
 
         if not scored_tasks:

@@ -96,14 +96,14 @@ def run_single_trial(
         strategy_label = strategy_type.name
     else:
         strategy_label = str(strategy_label_or_type)
-    
+
     if args is None:
         raise ValueError("args parameter must be provided to run_single_trial")
     scenario: Optional[ScenarioConfig] = None
     if getattr(args, "scenario", None) and args.scenario.lower() != "custom":
         scenario = create_scenario(args.scenario)
         w, h = scenario.width, scenario.height
-        steps = args.steps if args.steps != 100 else scenario.max_steps
+        steps = max(scenario.max_steps, getattr(args, "steps", 100))
         inject_tick = args.inject_failure_tick if args.inject_failure_tick is not None else scenario.inject_failure_tick
         fail_robot = scenario.fail_robot_id or args.fail_robot
         vehicles = scenario.vehicles
@@ -220,6 +220,8 @@ def run_single_trial(
 
         coordinator.step_coordination(timestamp=sim_time, dt=args.dt)
         collector.step(coordinator, timestamp=sim_time)
+        if coordinator.target_found:
+            break
 
     return collector.compute_metrics(coordinator)
 

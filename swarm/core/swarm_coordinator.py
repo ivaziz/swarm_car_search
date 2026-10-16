@@ -2,7 +2,9 @@
 Decentralized Swarm Coordinator Orchestrating Multi-Robot Exploration and Dynamic Task Allocation.
 """
 
-from typing import Dict, List, Optional, Any, Tuple
+from enum import Enum
+from typing import Dict, List, Optional, Any, Tuple, Set
+import math
 from interfaces.slam_interface import Pose2D
 from simulation.environment import UrbanEnvironment
 from swarm.states.robot_states import RobotState
@@ -14,6 +16,8 @@ from swarm.task_allocation.allocation_strategy import (
 )
 from swarm.pheromone.pheromone_map import PheromoneMap
 from swarm.pheromone.pheromone_updater import PheromoneUpdater
+from swarm.pheromone.target_probability_map import TargetProbabilityMap
+from swarm.task_allocation.search_history import SearchSpatialMemory
 from swarm.failure_handling.failure_detector import (
     FailureDetector,
     FailureDetectorConfig,
@@ -29,12 +33,20 @@ from .robot_agent import RobotAgent
 from .swarm_state import SwarmState
 
 
+class SwarmMissionState(str, Enum):
+    """Macro state of the autonomous swarm mission."""
+    SEARCHING = "SEARCHING"
+    INVESTIGATING = "INVESTIGATING"
+    VERIFYING = "VERIFYING"
+    TARGET_FOUND = "TARGET_FOUND"
+
+
 class SwarmCoordinator:
     """
     Coordinates multi-robot swarm behavior:
     - Integrates decentralized robot agents.
     - Synchronizes SLAM frontier ingestion into TaskManager.
-    - Resolves dynamic task assignments via ACO without central point of failure.
+    - Resolves dynamic task assignments via ACO with Bayesian target beliefs and spatial memory.
     - Disperses avoidance pheromones to prevent multi-robot congestion.
     - Exchanges peer state heartbeats.
     - Continuously monitors robot health and dynamically reassigns orphaned tasks on failure.
@@ -46,6 +58,8 @@ class SwarmCoordinator:
         allocation_strategy: Optional[ITaskAllocationStrategy] = None,
         pheromone_map: Optional[PheromoneMap] = None,
         pheromone_updater: Optional[PheromoneUpdater] = None,
+        target_probability_map: Optional[TargetProbabilityMap] = None,
+        search_memory: Optional[SearchSpatialMemory] = None,
         environment: Optional[UrbanEnvironment] = None,
         failure_config: Optional[FailureDetectorConfig] = None,
         failure_detector: Optional[FailureDetector] = None,
@@ -63,6 +77,15 @@ class SwarmCoordinator:
         self.pheromone_map = pheromone_map or PheromoneMap(width=width, height=height, resolution=res)
         self.pheromone_updater = pheromone_updater or PheromoneUpdater(self.pheromone_map)
 
+        # Dynamic Bayesian belief grid and search history memory
+        self.target_probability_map = target_probability_map or TargetProbabilityMap(
+            width=width, height=height, resolution=res, initial_prior=0.50
+        )
+        self.target_probability_map.initialize_from_environment(self.env)
+        self.search_memory = search_memory or SearchSpatialMemory(
+            width=width, height=height, bin_size=2.0
+        )
+
         # Failure detection and dynamic recovery
         self.failure_detector = failure_detector or FailureDetector(failure_config)
         self.recovery_manager = recovery_manager or RecoveryManager()
@@ -71,6 +94,9 @@ class SwarmCoordinator:
         self.robots: Dict[str, RobotAgent] = {}
         # Per-robot decentralized state perspective
         self.robot_swarm_states: Dict[str, SwarmState] = {}
+
+        # Swarm macro mission state
+        self.mission_state = SwarmMissionState.SEARCHING
 
         # Aggregate telemetry metrics
         self.completed_tasks_count = 0
@@ -82,14 +108,16 @@ class SwarmCoordinator:
         self.confirmed_target_location: Optional[Tuple[float, float]] = None
         self.confirmed_target_plate: Optional[str] = None
 
-        # Comprehensive Target Identification Telemetry
+        # Comprehensive Target Identification Telemetry & Stage Breakdown
         self.target_discovery_time: Optional[float] = None
         self.discovering_robot_id: Optional[str] = None
         self.target_confirmation_confidence: Optional[float] = None
+        self.confidence_stage_breakdown: Dict[str, float] = {}
         self.target_distance_traveled: Optional[float] = None
         self.total_vehicle_detections_count: int = 0
         self.total_target_confirmations_count: int = 0
         self.total_false_positives_count: int = 0
+
 
     def register_robot(self, agent: RobotAgent) -> None:
         """Enrolls an autonomous robot agent into the swarm coordinator."""
@@ -146,17 +174,54 @@ class SwarmCoordinator:
     def step_coordination(self, timestamp: float, dt: float) -> Dict[str, Any]:
         """
         Executes one synchronized coordination iteration:
-        1. Propagate robot physics and local SLAM updates.
+        1. Propagate robot physics, SLAM, and spatial search memory.
         2. Ingest peer heartbeats and evaluate failure detection & dynamic recovery.
-        3. Ingest newly observed frontier clusters into task pool.
-        4. Dynamically allocate pending tasks to idle/reassigning active robots.
-        5. Evaluate visual perception alerts & target recruitment.
-        6. Stigmergic pheromone deposits (exploration + avoidance) & decay.
+        3. Ingest newly observed frontier clusters into task pool with Bayesian prior.
+        4. Dynamically allocate pending tasks via Intelligent ACO.
+        5. Evaluate multi-stage perception & multi-frame target confirmation.
+        6. Stigmergic pheromone deposits & discrete evaporation.
         7. Prune stale tasks and compile telemetry metrics.
         """
-        # 1. Physics & SLAM propagation
+        # 1. Physics & SLAM propagation & Spatial Memory update
         for agent in self.robots.values():
             agent.step(timestamp=timestamp, dt=dt, env=self.env)
+
+            if agent.is_alive and not self.failure_detector.is_failed(agent.robot_id):
+                # Record spatial visitation memory
+                self.search_memory.record_visit(
+                    robot_id=agent.robot_id,
+                    x=agent.pose.x,
+                    y=agent.pose.y,
+                    timestamp=timestamp,
+                )
+                # Bayesian negative evidence update for surveyed empty regions
+                self.target_probability_map.deposit_negative_evidence(
+                    x=agent.pose.x,
+                    y=agent.pose.y,
+                    decay_factor=0.08 * dt,
+                    radius=2.5,
+                )
+
+        # 1.5. Inter-robot collision avoidance & motion de-confliction
+        alive_robots = [a for a in self.robots.values() if a.is_alive and not self.failure_detector.is_failed(a.robot_id)]
+        for i in range(len(alive_robots)):
+            for j in range(i + 1, len(alive_robots)):
+                r1 = alive_robots[i]
+                r2 = alive_robots[j]
+                dx = r2.pose.x - r1.pose.x
+                dy = r2.pose.y - r1.pose.y
+                dist = math.hypot(dx, dy)
+                if dist < 2.2 and dist > 1e-3:
+                    repel_x = -(dx / dist) * 0.15
+                    repel_y = -(dy / dist) * 0.15
+                    if hasattr(r1, "sim_robot") and r1.sim_robot is not None:
+                        nx1 = max(1.0, min(self.env.width - 1.0, r1.sim_robot.pose.x + repel_x * dt))
+                        ny1 = max(1.0, min(self.env.height - 1.0, r1.sim_robot.pose.y + repel_y * dt))
+                        r1.sim_robot.pose = Pose2D(nx1, ny1, r1.sim_robot.pose.theta)
+                    if hasattr(r2, "sim_robot") and r2.sim_robot is not None:
+                        nx2 = max(1.0, min(self.env.width - 1.0, r2.sim_robot.pose.x - repel_x * dt))
+                        ny2 = max(1.0, min(self.env.height - 1.0, r2.sim_robot.pose.y - repel_y * dt))
+                        r2.sim_robot.pose = Pose2D(nx2, ny2, r2.sim_robot.pose.theta)
 
         # 2. Inter-robot communication / heartbeats exchange
         for agent in self.robots.values():
@@ -221,7 +286,9 @@ class SwarmCoordinator:
             if agent.last_slam_state and agent.last_slam_state.frontiers:
                 for frontier in agent.last_slam_state.frontiers:
                     prior = 0.5
-                    if self.env is not None:
+                    if self.target_probability_map is not None:
+                        prior = self.target_probability_map.get_probability(frontier.centroid_x, frontier.centroid_y)
+                    elif self.env is not None:
                         prior = self.env.get_zone_prior(frontier.centroid_x, frontier.centroid_y)
 
                     self.task_manager.ingest_frontiers(
@@ -230,7 +297,7 @@ class SwarmCoordinator:
                         detection_probability=prior,
                     )
 
-        # 3.5. Candidate vehicle detection & Stigmergic recruitment
+        # 3.5. Candidate vehicle detection & Bayesian Target Belief Update
         for agent in self.robots.values():
             if self.failure_detector.is_failed(agent.robot_id):
                 continue
@@ -241,6 +308,23 @@ class SwarmCoordinator:
                 cx, cy = cand.estimated_global_position
                 p_target = getattr(cand, "target_probability", 0.75)
                 v_id = getattr(cand, "detected_vehicle_id", None)
+
+                # Positive Bayesian belief update & spatial memory record
+                self.target_probability_map.deposit_positive_evidence(
+                    x=cx,
+                    y=cy,
+                    confidence=p_target,
+                    radius=5.0,
+                )
+                self.search_memory.record_sighting(
+                    x=cx,
+                    y=cy,
+                    is_candidate=True,
+                )
+
+                # Update macro mission state
+                if not self.target_found:
+                    self.mission_state = SwarmMissionState.INVESTIGATING
 
                 # Deposit target recruitment pheromone
                 self.pheromone_updater.deposit_success(
@@ -257,7 +341,7 @@ class SwarmCoordinator:
                     y=cy,
                     timestamp=timestamp,
                     target_probability=p_target,
-                    priority=2.0 + 3.0 * p_target,
+                    priority=2.5 + 3.5 * p_target,
                     vehicle_id=v_id,
                     task_type=task_type,
                 )
@@ -292,6 +376,9 @@ class SwarmCoordinator:
                     available_tasks=available_tasks,
                     swarm_state=local_swarm_state,
                     pheromone_map=self.pheromone_map,
+                    target_probability_map=self.target_probability_map,
+                    search_memory=self.search_memory,
+                    battery_level=agent.battery_level,
                 )
 
                 if chosen_task is not None:
@@ -307,6 +394,9 @@ class SwarmCoordinator:
                                     pose=agent.pose,
                                     timestamp=timestamp,
                                     assigned_task_id=chosen_task.task_id,
+                                    target_probability_map=self.target_probability_map,
+                                    search_memory=self.search_memory,
+                                    battery_level=agent.battery_level,
                                 )
                         self.pheromone_updater.deposit_avoidance(
                             x=chosen_task.centroid_x,
@@ -315,19 +405,24 @@ class SwarmCoordinator:
                             radius=3.0,
                         )
 
-        # 4.5. Perception detection evaluation & Target recruitment
+        # 4.5. Multi-Stage Perception evaluation & Target Confirmation
         for agent in self.robots.values():
             if self.failure_detector.is_failed(agent.robot_id):
                 continue
+            if agent.current_state == RobotState.VERIFYING and not self.target_found:
+                self.mission_state = SwarmMissionState.VERIFYING
+
             if agent.last_confirmed_match is not None:
                 match = agent.last_confirmed_match
                 if not self.target_found:
                     self.target_found = True
+                    self.mission_state = SwarmMissionState.TARGET_FOUND
                     self.confirmed_target_location = match.location
                     self.confirmed_target_plate = match.plate_number
                     self.target_discovery_time = timestamp
                     self.discovering_robot_id = match.reporting_robot_id
                     self.target_confirmation_confidence = match.match_confidence
+                    self.confidence_stage_breakdown = match.stage_breakdown
                     self.target_distance_traveled = agent.sim_robot.total_distance
                     self.total_target_confirmations_count += 1
 
@@ -386,6 +481,7 @@ class SwarmCoordinator:
 
         return {
             "timestamp": timestamp,
+            "mission_state": self.mission_state.value,
             "robot_count": len(self.robots),
             "failed_robots_count": len(self.failure_detector.get_all_failed_robots()),
             "recovered_tasks_count": self.recovered_tasks_count,
@@ -396,10 +492,12 @@ class SwarmCoordinator:
             "reassignment_events_count": self.reassignment_events_count,
             "average_exploration_ratio": avg_exp,
             "target_found": self.target_found,
+            "confirmed_target_plate": self.confirmed_target_plate,
             "confirmed_target_location": self.confirmed_target_location,
             "target_discovery_time": self.target_discovery_time,
             "discovering_robot_id": self.discovering_robot_id,
             "target_confirmation_confidence": self.target_confirmation_confidence,
+            "confidence_stage_breakdown": self.confidence_stage_breakdown,
             "target_distance_traveled": self.target_distance_traveled,
             "total_vehicle_detections": total_dets,
             "total_false_positives": total_fps,

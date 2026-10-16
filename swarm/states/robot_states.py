@@ -34,6 +34,7 @@ VALID_STATE_TRANSITIONS: Dict[RobotState, Set[RobotState]] = {
     RobotState.NAVIGATING: {
         RobotState.SEARCHING,
         RobotState.VEHICLE_DETECTED,
+        RobotState.VERIFYING,
         RobotState.REASSIGNING,
         RobotState.COMMUNICATION_LOST,
         RobotState.FAILED,

@@ -203,11 +203,11 @@ class RobotAgent:
                     self.fsm.transition_to(RobotState.VEHICLE_DETECTED, timestamp, reason="CANDIDATE_VEHICLE_SIGHTED")
             plate_event = self.ocr.recognize_license_plate(det_event, ground_truth_vehicle)
 
-        # Match against watchlist
+        # Match against watchlist using multi-stage verification
         match_event = None
         if self.matcher is not None and plate_event is not None:
             if hasattr(self.matcher, "classify_plate"):
-                classification, match_event, sim = self.matcher.classify_plate(plate_event)
+                classification, match_event, sim = self.matcher.classify_plate(plate_event, det_event)
             else:
                 match_event = self.matcher.match_plate(plate_event)
                 classification = "CONFIRMED" if (match_event and match_event.confirmed) else "NON_TARGET"

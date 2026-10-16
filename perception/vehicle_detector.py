@@ -6,8 +6,10 @@ from interfaces.slam_interface import Pose2D
 from interfaces.perception_interface import (
     BoundingBox2D,
     VehicleDetectionEvent,
+    TargetAppearanceProfile,
 )
 from simulation.environment import UrbanEnvironment
+from .appearance_verifier import VehicleAppearanceVerifier
 
 
 @dataclass
@@ -50,18 +52,20 @@ class SimulatedVehicleDetector(IVehicleDetector):
     - Verifies range to target within camera optical limits.
     - Verifies angular bearing within camera Field-of-View (FoV).
     - Checks line-of-sight against urban obstacles (walls, buildings).
-    - Produces realistic BoundingBox2D, distance-attenuated confidence, and target probability.
+    - Produces realistic BoundingBox2D, distance-attenuated confidence, and appearance signature.
     """
 
     def __init__(
         self,
-        max_detection_range: float = 12.0,
+        max_detection_range: float = 14.0,
         fov_degrees: float = 90.0,
-        base_confidence: float = 0.92,
+        base_confidence: float = 0.94,
+        target_profile: Optional[TargetAppearanceProfile] = None,
     ) -> None:
         self.max_detection_range = max_detection_range
         self.fov_radians = math.radians(fov_degrees)
         self.base_confidence = base_confidence
+        self.appearance_verifier = VehicleAppearanceVerifier(default_target_profile=target_profile)
 
     def _has_line_of_sight(
         self,
@@ -129,14 +133,35 @@ class SimulatedVehicleDetector(IVehicleDetector):
             if not self._has_line_of_sight(robot_pose.x, robot_pose.y, vx, vy, env):
                 continue
 
-            # Distance-attenuated confidence: slightly decreases with distance
+            # 1. Distance-attenuated vehicle detection confidence
             dist_factor = max(0.0, 1.0 - (dist / (self.max_detection_range * 1.5)))
-            confidence = min(0.99, max(0.50, self.base_confidence * dist_factor))
+            vehicle_confidence = min(0.99, max(0.50, self.base_confidence * dist_factor))
 
-            # Synthesize 2D bounding box
-            bbox = BoundingBox2D(ymin=0.25, xmin=0.20, ymax=0.75, xmax=0.80)
+            # 2. Appearance Verification (Color & Shape)
+            app_conf, _ = self.appearance_verifier.verify_appearance(
+                observed_class=vehicle.vehicle_class,
+                observed_color=vehicle.color,
+            )
 
-            # Candidate plate visibility based on distance
+            # 3. Plate detection likelihood & confidence (plate detector stage)
+            if dist <= 6.0:
+                plate_det_conf = min(0.98, max(0.85, 0.95 - (dist / 20.0)))
+            elif dist <= 10.0:
+                plate_det_conf = min(0.85, max(0.60, 0.90 - (dist / 15.0)))
+            else:
+                plate_det_conf = max(0.35, 0.70 - (dist / 12.0))
+
+            # 4. Synthesize 2D bounding box
+            # Projected box scales with distance
+            box_scale = max(0.15, min(0.60, 3.0 / max(1.0, dist)))
+            bbox = BoundingBox2D(
+                ymin=max(0.1, 0.5 - box_scale * 0.5),
+                xmin=max(0.1, 0.5 - box_scale * 0.8),
+                ymax=min(0.9, 0.5 + box_scale * 0.5),
+                xmax=min(0.9, 0.5 + box_scale * 0.8),
+            )
+
+            # 5. Candidate plate visibility based on distance
             if dist <= 5.0:
                 plate_candidate = vehicle.plate_number
             elif dist <= 9.0:
@@ -144,21 +169,21 @@ class SimulatedVehicleDetector(IVehicleDetector):
             else:
                 plate_candidate = None
 
-            # Calculate target probability based on prior, confidence, and visual cues
+            # 6. Calculate target probability
             p_prior = 0.5
             if env is not None:
                 p_prior = env.get_zone_prior(vx, vy)
 
-            # Class prior (sedan is expected vehicle class)
-            class_prior = 0.9 if vehicle.vehicle_class.lower() == "sedan" else 0.4
-            stolen_cue = 0.15 if getattr(vehicle, "is_stolen", True) else -0.15
-            target_prob = min(0.99, max(0.10, p_prior * 0.35 + confidence * 0.35 + class_prior * 0.15 + stolen_cue))
+            target_prob = min(
+                0.99,
+                max(0.05, 0.30 * p_prior + 0.35 * vehicle_confidence + 0.35 * app_conf)
+            )
 
             event = VehicleDetectionEvent(
                 robot_id=robot_id,
                 timestamp=timestamp,
                 vehicle_class=vehicle.vehicle_class,
-                confidence=round(confidence, 3),
+                confidence=round(vehicle_confidence, 3),
                 bounding_box=bbox,
                 estimated_global_position=(round(vx, 2), round(vy, 2)),
                 image_reference=f"frame_{robot_id}_{int(timestamp * 1000)}.jpg",
@@ -166,6 +191,9 @@ class SimulatedVehicleDetector(IVehicleDetector):
                 distance=round(dist, 2),
                 plate_candidate=plate_candidate,
                 target_probability=round(target_prob, 3),
+                observed_color=vehicle.color,
+                appearance_confidence=round(app_conf, 3),
+                plate_detection_confidence=round(plate_det_conf, 3),
             )
             detected.append((event, vehicle))
 

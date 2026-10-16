@@ -9,7 +9,8 @@ import os
 
 @dataclass
 class ACOWeights:
-    """Multi-objective exponents for task scoring."""
+    """Multi-objective weights and exponents for task scoring."""
+    # Classical exponents (for backward compatibility)
     alpha: float = 1.2    # Positive pheromone (exploitation)
     beta: float = 1.5     # Information gain / unexplored frontier size
     gamma: float = 1.8    # Vehicle detection prior probability
@@ -17,6 +18,17 @@ class ACOWeights:
     epsilon: float = 1.3  # Distance / travel cost penalty
     zeta: float = 2.0     # Congestion penalty (peer robot overlap)
     theta: float = 1.5    # Avoidance / recent visit pheromone penalty
+
+    # Normalized Multi-Factor Terms
+    w_information_gain: float = 1.0
+    w_target_prior: float = 1.4
+    w_historical_value: float = 0.8
+    w_exploration_value: float = 0.9
+    w_distance_cost: float = 0.7
+    w_congestion_cost: float = 1.0
+    w_collision_risk: float = 0.6
+    w_redundant_penalty: float = 0.8
+    w_battery_health: float = 0.5
 
 
 @dataclass
@@ -33,6 +45,8 @@ class ACOConfig:
     weights: ACOWeights = field(default_factory=ACOWeights)
     stochastic: StochasticParams = field(default_factory=StochasticParams)
     min_distance_offset: float = 1.0
+    max_normalization_distance: float = 70.0
+    max_frontier_size: float = 30.0
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ACOConfig":
@@ -48,6 +62,15 @@ class ACOConfig:
             epsilon=float(weights_dict.get("epsilon", 1.3)),
             zeta=float(weights_dict.get("zeta", 2.0)),
             theta=float(weights_dict.get("theta", 1.5)),
+            w_information_gain=float(weights_dict.get("w_information_gain", 1.0)),
+            w_target_prior=float(weights_dict.get("w_target_prior", 1.4)),
+            w_historical_value=float(weights_dict.get("w_historical_value", 0.8)),
+            w_exploration_value=float(weights_dict.get("w_exploration_value", 0.9)),
+            w_distance_cost=float(weights_dict.get("w_distance_cost", 0.7)),
+            w_congestion_cost=float(weights_dict.get("w_congestion_cost", 1.0)),
+            w_collision_risk=float(weights_dict.get("w_collision_risk", 0.6)),
+            w_redundant_penalty=float(weights_dict.get("w_redundant_penalty", 0.8)),
+            w_battery_health=float(weights_dict.get("w_battery_health", 0.5)),
         )
         stochastic = StochasticParams(
             temperature=float(stoch_dict.get("temperature", 1.0)),

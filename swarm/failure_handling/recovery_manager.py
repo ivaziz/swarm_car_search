@@ -5,13 +5,14 @@ and dispatches dynamic reallocations to prevent search coverage gaps.
 """
 
 from __future__ import annotations
+import math
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, List, Optional, Any, TYPE_CHECKING
 
 from interfaces.slam_interface import Pose2D
 from swarm.states.robot_states import RobotState
-from swarm.task_allocation.frontier_task import SearchTask, TaskStatus
+from swarm.task_allocation.frontier_task import SearchTask, TaskStatus, TaskType
 from .failure_detector import RobotFailureEvent
 
 if TYPE_CHECKING:
@@ -106,34 +107,61 @@ class RecoveryManager:
             )
             result.actions_taken.append(RecoveryAction.AVOIDANCE_DEPOSITED)
 
-        # 4. Immediate Dynamic Reassignment: dispatch orphaned task to an idle peer if available
+        # 4. Immediate Dynamic Reassignment: scored multi-criteria dispatch of orphaned task
         if (
             orphaned_task is not None
             and robots is not None
             and allocation_strategy is not None
         ):
-            # Find eligible active robots
+            best_candidate_id: Optional[str] = None
+            best_candidate_agent: Optional["RobotAgent"] = None
+            best_suitability = -1.0
+
+            # Evaluate all surviving peer robots
             for candidate_id, candidate_agent in robots.items():
-                if candidate_id == event.robot_id:
+                if candidate_id == event.robot_id or not candidate_agent.is_alive:
+                    continue
+                if candidate_agent.current_state == RobotState.FAILED:
                     continue
 
-                if candidate_agent.current_state in (RobotState.IDLE, RobotState.REASSIGNING):
-                    # Check if candidate can take this task
-                    candidate_swarm_state = swarm_states.get(candidate_id)
-                    chosen = allocation_strategy.allocate_task(
-                        robot_id=candidate_id,
-                        robot_pose=candidate_agent.pose,
-                        available_tasks=[orphaned_task],
-                        swarm_state=candidate_swarm_state,
-                        pheromone_map=pheromone_map,
-                    )
-                    if chosen is not None:
-                        assigned = candidate_agent.assign_task(chosen, event.timestamp)
-                        if assigned:
-                            task_manager.assign_task(chosen.task_id, candidate_id, event.timestamp)
-                            result.reassigned_to_robot_id = candidate_id
-                            result.actions_taken.append(RecoveryAction.TASK_REASSIGNED)
-                            break
+                # Eligible states: IDLE, REASSIGNING, or NAVIGATING background exploration
+                is_available = candidate_agent.current_state in (RobotState.IDLE, RobotState.REASSIGNING)
+                is_preemptible = (
+                    candidate_agent.current_state == RobotState.NAVIGATING
+                    and candidate_agent.current_task is not None
+                    and getattr(candidate_agent.current_task, "task_type", None) != TaskType.TARGET_CONFIRMATION
+                )
+
+                if is_available or is_preemptible:
+                    # Multi-criteria suitability score
+                    dx = candidate_agent.pose.x - orphaned_task.centroid_x
+                    dy = candidate_agent.pose.y - orphaned_task.centroid_y
+                    dist = math.hypot(dx, dy)
+                    dist_factor = 1.0 / (1.0 + 0.05 * dist)
+                    battery_factor = max(0.1, candidate_agent.battery_level)
+                    workload_factor = 1.0 if is_available else 0.65
+
+                    suitability = dist_factor * battery_factor * workload_factor
+                    if suitability > best_suitability:
+                        best_suitability = suitability
+                        best_candidate_id = candidate_id
+                        best_candidate_agent = candidate_agent
+
+            if best_candidate_id is not None and best_candidate_agent is not None:
+                candidate_swarm_state = swarm_states.get(best_candidate_id)
+                chosen = allocation_strategy.allocate_task(
+                    robot_id=best_candidate_id,
+                    robot_pose=best_candidate_agent.pose,
+                    available_tasks=[orphaned_task],
+                    swarm_state=candidate_swarm_state,
+                    pheromone_map=pheromone_map,
+                )
+                if chosen is not None:
+                    assigned = best_candidate_agent.assign_task(chosen, event.timestamp)
+                    if assigned:
+                        task_manager.assign_task(chosen.task_id, best_candidate_id, event.timestamp)
+                        result.reassigned_to_robot_id = best_candidate_id
+                        result.actions_taken.append(RecoveryAction.TASK_REASSIGNED)
 
         self.recovery_history.append(result)
         return result

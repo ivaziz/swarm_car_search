@@ -27,6 +27,9 @@ class ITaskAllocationStrategy(ABC):
         available_tasks: List[SearchTask],
         swarm_state: Optional[SwarmState] = None,
         pheromone_map: Optional[PheromoneMap] = None,
+        target_probability_map: Optional[Any] = None,
+        search_memory: Optional[Any] = None,
+        battery_level: float = 1.0,
     ) -> Optional[SearchTask]:
         """Selects a candidate task for the specified robot."""
         pass
@@ -34,8 +37,8 @@ class ITaskAllocationStrategy(ABC):
 
 class ACOAllocationStrategy(ITaskAllocationStrategy):
     """
-    Ant Colony Optimization (ACO) allocation strategy with pheromone stigmergy
-    and peer congestion avoidance.
+    Ant Colony Optimization (ACO) allocation strategy with pheromone stigmergy,
+    Bayesian target belief, spatial memory, and peer congestion avoidance.
     """
 
     def __init__(self, engine: Optional[ACOEngine] = None) -> None:
@@ -53,6 +56,9 @@ class ACOAllocationStrategy(ITaskAllocationStrategy):
         available_tasks: List[SearchTask],
         swarm_state: Optional[SwarmState] = None,
         pheromone_map: Optional[PheromoneMap] = None,
+        target_probability_map: Optional[Any] = None,
+        search_memory: Optional[Any] = None,
+        battery_level: float = 1.0,
     ) -> Optional[SearchTask]:
         """Evaluates tasks using ACO multi-objective scoring and selects via Softmax."""
         peer_commitments: Dict[str, str] = {}
@@ -66,7 +72,11 @@ class ACOAllocationStrategy(ITaskAllocationStrategy):
             robot_pose=robot_pose,
             pheromone_map=pheromone_map,
             peer_commitments=peer_commitments,
+            target_probability_map=target_probability_map,
+            search_memory=search_memory,
+            battery_level=battery_level,
         )
+
 
 
 class NearestFrontierStrategy(ITaskAllocationStrategy):

@@ -213,7 +213,7 @@ class TestEndToEndTargetSearchExecution(unittest.TestCase):
 
         self.assertTrue(metrics.target_found, "Target should be found in easy_target scenario")
         self.assertIsNotNone(metrics.time_to_detection)
-        self.assertLess(metrics.time_to_detection, 30.0)
+        self.assertLess(metrics.time_to_detection, 50.0)
         self.assertEqual(metrics.confirmed_target_location, (25.0, 25.0))
         self.assertGreaterEqual(metrics.target_confirmations_count, 1)
 

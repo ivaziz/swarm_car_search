@@ -3,8 +3,8 @@ Abstract Interface and Event Definitions for Perception & Vision Subsystem.
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Optional, Tuple, Dict, Any
 from .slam_interface import Pose2D
 
 
@@ -15,6 +15,15 @@ class BoundingBox2D:
     xmin: float
     ymax: float
     xmax: float
+
+
+@dataclass(frozen=True)
+class TargetAppearanceProfile:
+    """Target visual signature specification (class, color, aspect ratio)."""
+    vehicle_class: str = "sedan"
+    color: str = "dark_gray"
+    color_rgb: Tuple[int, int, int] = (55, 55, 60)
+    aspect_ratio: float = 2.2  # length / width
 
 
 @dataclass(frozen=True)
@@ -31,6 +40,9 @@ class VehicleDetectionEvent:
     distance: float = 0.0
     plate_candidate: Optional[str] = None
     target_probability: float = 0.5
+    observed_color: str = "dark_gray"
+    appearance_confidence: float = 0.90
+    plate_detection_confidence: float = 0.90
 
 
 @dataclass(frozen=True)
@@ -42,11 +54,17 @@ class PlateDetectionEvent:
     ocr_confidence: float
     estimated_global_position: Tuple[float, float]
     evidence_reference: Optional[str] = None
+    plate_bounding_box: Optional[BoundingBox2D] = None
+    raw_ocr_text: Optional[str] = None
+    character_confidences: Optional[Tuple[float, ...]] = None
 
 
 @dataclass(frozen=True)
 class MatchEvent:
-    """Triggered when plate number matches a target in the missing/stolen car watchlist."""
+    """
+    Triggered when candidate passes multi-stage verification against target watchlist.
+    Contains granular confidence scores from every perception stage.
+    """
     target_id: str
     plate_number: str
     match_confidence: float
@@ -55,6 +73,14 @@ class MatchEvent:
     reporting_robot_id: str
     timestamp: float
     evidence_reference: Optional[str] = None
+    # Granular multi-stage confidence breakdown
+    vehicle_confidence: float = 0.90
+    plate_confidence: float = 0.90
+    ocr_confidence: float = 0.90
+    appearance_confidence: float = 0.90
+    temporal_confidence: float = 0.90
+    frame_count: int = 1
+    stage_breakdown: Dict[str, float] = field(default_factory=dict)
 
 
 class IPerceptionProvider(ABC):

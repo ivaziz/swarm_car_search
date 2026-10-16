@@ -170,7 +170,7 @@ class SwarmVisualizer:
                     ax.add_patch(rect)
 
         # 2. Draw SLAM Frontier Tasks
-        for task in coordinator.task_manager.tasks.values():
+        for task in list(coordinator.task_manager.tasks.values()):
             if task.status in (TaskStatus.PENDING, TaskStatus.ASSIGNED):
                 color = "#00E5FF" if task.status == TaskStatus.ASSIGNED else "#FFD600"
                 ax.scatter(
@@ -283,14 +283,14 @@ class SwarmVisualizer:
             spine.set_color("#444450")
 
     def _plot_pheromone_field(self, ax: Any, coordinator: SwarmCoordinator) -> None:
-        """Renders discrete heatmap overlay of stigmergic exploration and avoidance layers."""
+        """Renders discrete heatmap overlay of stigmergic exploration and Bayesian target belief."""
         pmap = coordinator.pheromone_map
         ax.set_facecolor("#121216")
         ax.set_xlim(0, pmap.width)
         ax.set_ylim(0, pmap.height)
         ax.set_aspect("equal")
 
-        # Build combined 2D array: exploration (blue/green) + avoidance (red) + success (gold)
+        # Build combined 2D array: exploration (blue/cyan) + avoidance (red) + Bayesian target probability (gold/yellow)
         field_img = np.zeros((pmap.grid_height, pmap.grid_width, 3), dtype=np.float32)
 
         exp_layer = pmap.layers.get(PheromoneLayerType.EXPLORATION, [])
@@ -301,6 +301,11 @@ class SwarmVisualizer:
         max_avoid = max(avoid_layer) if avoid_layer and max(avoid_layer) > 0.01 else 1.0
         max_succ = max(succ_layer) if succ_layer and max(succ_layer) > 0.01 else 1.0
 
+        # Get target probability grid if available
+        prob_grid = None
+        if hasattr(coordinator, "target_probability_map") and coordinator.target_probability_map is not None:
+            prob_grid = coordinator.target_probability_map.get_probability_grid()
+
         for gy in range(pmap.grid_height):
             for gx in range(pmap.grid_width):
                 idx = gy * pmap.grid_width + gx
@@ -308,10 +313,16 @@ class SwarmVisualizer:
                 a = (avoid_layer[idx] / max_avoid) if idx < len(avoid_layer) else 0.0
                 s = (succ_layer[idx] / max_succ) if idx < len(succ_layer) else 0.0
 
-                # R = avoidance + success, G = exploration + success, B = exploration
-                r = min(1.0, a * 0.9 + s * 1.0)
-                g = min(1.0, e * 0.8 + s * 0.9)
-                b = min(1.0, e * 0.6)
+                p_bayes = 0.0
+                if prob_grid is not None:
+                    p_row = min(prob_grid.shape[0] - 1, int(gy * prob_grid.shape[0] / pmap.grid_height))
+                    p_col = min(prob_grid.shape[1] - 1, int(gx * prob_grid.shape[1] / pmap.grid_width))
+                    p_bayes = float(prob_grid[p_row, p_col])
+
+                # R = avoidance + Bayesian target belief, G = exploration + target, B = exploration
+                r = min(1.0, a * 0.9 + s * 1.0 + p_bayes * 0.8)
+                g = min(1.0, e * 0.7 + s * 0.9 + p_bayes * 0.6)
+                b = min(1.0, e * 0.8)
                 field_img[gy, gx] = [r, g, b]
 
         ax.imshow(
@@ -321,7 +332,7 @@ class SwarmVisualizer:
             interpolation="gaussian",
             alpha=0.9,
         )
-        ax.set_title("Stigmergic Pheromone Layers (G: Explore, R: Avoid, Gold: Target)", color="#FFFFFF", fontsize=10, weight="bold")
+        ax.set_title("Stigmergy & Bayesian Belief P(Target|Loc) (Gold: High Prob, Cyan: Exp, Red: Avoid)", color="#FFFFFF", fontsize=9.5, weight="bold")
         ax.tick_params(colors="#888888")
         for spine in ax.spines.values():
             spine.set_color("#444450")
@@ -332,47 +343,73 @@ class SwarmVisualizer:
         coordinator: SwarmCoordinator,
         timestamp: float,
     ) -> None:
-        """Plots timeline curves and status badges."""
+        """Plots timeline curves, mission state badge, and multi-stage confidence breakdown."""
         ax.set_facecolor("#121216")
 
         status = coordinator.get_swarm_status(timestamp)
+        mission_state = status.get("mission_state", "SEARCHING")
+
+        state_colors = {
+            "SEARCHING": "#00E5FF",
+            "INVESTIGATING": "#FFD600",
+            "VERIFYING": "#FF9100",
+            "TARGET_FOUND": "#00E676",
+        }
+        badge_col = state_colors.get(mission_state, "#00E5FF")
 
         if self.exploration_history:
             times = [h[0] for h in self.exploration_history]
             exps = [h[1] * 100.0 for h in self.exploration_history]
-            ax.plot(times, exps, color="#00E5FF", linewidth=2.2, label="Exploration %")
-            ax.fill_between(times, exps, color="#00E5FF", alpha=0.15)
+            ax.plot(times, exps, color="#00E5FF", linewidth=2.0, label="Exploration %")
+            ax.fill_between(times, exps, color="#00E5FF", alpha=0.12)
 
         ax.set_ylim(0, 105)
-        ax.set_xlabel("Simulation Time (s)", color="#AAAAAA", fontsize=9)
-        ax.set_ylabel("Coverage (%)", color="#AAAAAA", fontsize=9)
-        ax.set_title("Mission Telemetry & Search Progress", color="#FFFFFF", fontsize=10, weight="bold")
+        ax.set_xlabel("Simulation Time (s)", color="#AAAAAA", fontsize=8.5)
+        ax.set_ylabel("Coverage (%)", color="#AAAAAA", fontsize=8.5)
+        ax.set_title(f"MISSION STATE: [{mission_state}]", color=badge_col, fontsize=11, weight="bold")
         ax.grid(True, color="#282832", linestyle="--", alpha=0.6)
         ax.tick_params(colors="#888888")
         for spine in ax.spines.values():
             spine.set_color("#444450")
 
+        # Multi-Stage Perception Confidence Breakdown
+        breakdown = status.get("confidence_stage_breakdown", {})
+        c_veh = breakdown.get("vehicle_confidence", 0.0)
+        c_plate = breakdown.get("plate_confidence", 0.0)
+        c_ocr = breakdown.get("ocr_confidence", 0.0)
+        c_app = breakdown.get("appearance_match", 0.0)
+        c_temp = breakdown.get("temporal_consistency", 0.0)
+        c_final = breakdown.get("final_target_confidence", status.get("target_confirmation_confidence") or 0.0)
+        obs_cnt = breakdown.get("observations_count", 0)
+
         # Telemetry Text HUD
         hud_lines = [
-            f"Active Robots: {status.get('robot_count', 0) - status.get('failed_robots_count', 0)} / {status.get('robot_count', 0)}",
-            f"Failed Robots: {status.get('failed_robots_count', 0)}",
-            f"Recovered Tasks: {status.get('recovered_tasks_count', 0)}",
-            f"Completed Tasks: {status.get('completed_tasks_count', 0)}",
-            f"Pending Tasks: {status.get('pending_tasks_count', 0)}",
-            f"Target Car Found: {'YES (CONFIRMED)' if status.get('target_found') else 'SEARCHING...'}",
+            f"Active Robots   : {status.get('robot_count', 0) - status.get('failed_robots_count', 0)} / {status.get('robot_count', 0)}",
+            f"Tasks Done/Pend : {status.get('completed_tasks_count', 0)} / {status.get('pending_tasks_count', 0)}",
+            f"ACO Reassigns   : {status.get('reassignment_events_count', 0)}",
+            f"------------------------------------",
+            f"TARGET VERIFICATION PIPELINE:",
+            f"  Vehicle Conf  : {c_veh*100:.1f}%",
+            f"  Plate Conf    : {c_plate*100:.1f}%",
+            f"  OCR Conf      : {c_ocr*100:.1f}%",
+            f"  Appearance    : {c_app*100:.1f}%",
+            f"  Temporal/Cons : {c_temp*100:.1f}% ({obs_cnt} frames)",
+            f"  Composite Conf: {c_final*100:.1f}%",
+            f"Status          : {'TARGET VERIFIED 🎯' if status.get('target_found') else mission_state}",
         ]
         hud_str = "\n".join(hud_lines)
         ax.text(
-            0.05,
-            0.40,
+            0.03,
+            0.55,
             hud_str,
             transform=ax.transAxes,
             color="#FFFFFF",
-            fontsize=8.5,
+            fontsize=7.8,
             verticalalignment="top",
             fontfamily="monospace",
-            bbox=dict(boxstyle="round,pad=0.5", facecolor="#1E1E24", edgecolor="#00E5FF", alpha=0.85),
+            bbox=dict(boxstyle="round,pad=0.4", facecolor="#1E1E24", edgecolor=badge_col, alpha=0.9),
         )
+
 
     # =========================================================================
     # Pure-Python Standalone Renderers (Zero External Dependencies)
@@ -409,7 +446,7 @@ class SwarmVisualizer:
                     grid[ty][cx] = "#"
 
         # Draw tasks '?'
-        for task in coordinator.task_manager.tasks.values():
+        for task in list(coordinator.task_manager.tasks.values()):
             if task.status in (TaskStatus.PENDING, TaskStatus.ASSIGNED):
                 cx = min(cols - 1, int(task.centroid_x * sx))
                 cy = min(rows - 1, int(task.centroid_y * sy))
@@ -429,7 +466,7 @@ class SwarmVisualizer:
             grid[rows - 1 - cy][cx] = "!"
 
         # Draw robots 'R' (or 'X' if failed)
-        for robot_id, agent in coordinator.robots.items():
+        for robot_id, agent in list(coordinator.robots.items()):
             cx = min(cols - 1, int(agent.pose.x * sx))
             cy = min(rows - 1, int(agent.pose.y * sy))
             glyph = "X" if coordinator.failure_detector.is_failed(robot_id) else "R"
@@ -483,7 +520,7 @@ class SwarmVisualizer:
                     )
 
         # Draw Tasks
-        for task in coordinator.task_manager.tasks.values():
+        for task in list(coordinator.task_manager.tasks.values()):
             if task.status in (TaskStatus.PENDING, TaskStatus.ASSIGNED):
                 cx, cy = to_svg(task.centroid_x, task.centroid_y)
                 color = "#00E5FF" if task.status == TaskStatus.ASSIGNED else "#FFD600"
@@ -505,7 +542,7 @@ class SwarmVisualizer:
                 )
 
         # Draw Robots
-        for robot_id, agent in coordinator.robots.items():
+        for robot_id, agent in list(coordinator.robots.items()):
             rx, ry = to_svg(agent.pose.x, agent.pose.y)
             failed = coordinator.failure_detector.is_failed(robot_id)
             color = "#F44336" if failed else STATE_COLOR_MAP.get(agent.current_state, "#00BCD4")

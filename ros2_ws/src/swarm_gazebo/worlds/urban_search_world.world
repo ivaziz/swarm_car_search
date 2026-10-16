@@ -1,0 +1,972 @@
+<?xml version="1.0" ?>
+<sdf version="1.8">
+  <world name="urban_search_world">
+    <!-- Essential Gazebo Fortress Systems -->
+    <plugin
+      filename="ignition-gazebo-physics-system"
+      name="ignition::gazebo::systems::Physics">
+    </plugin>
+    <plugin
+      filename="ignition-gazebo-user-commands-system"
+      name="ignition::gazebo::systems::UserCommands">
+    </plugin>
+    <plugin
+      filename="ignition-gazebo-scene-broadcaster-system"
+      name="ignition::gazebo::systems::SceneBroadcaster">
+    </plugin>
+    <plugin
+      filename="ignition-gazebo-sensors-system"
+      name="ignition::gazebo::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+
+    <!-- Directional Sunlight -->
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>25.0 25.0 50.0 0 0 0</pose>
+      <diffuse>0.85 0.85 0.85 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.4 0.2 -0.9</direction>
+    </light>
+
+    <!-- Ground Plane (100m x 100m) -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry>
+          <material>
+            <ambient>0.75 0.78 0.8 1</ambient>
+            <diffuse>0.75 0.78 0.8 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- GUI Camera (Overhead Isometric View of 50m x 50m Area) -->
+    <gui fullscreen="0">
+      <camera name="user_camera">
+        <pose>25.0 -10.0 42.0 0 1.02 1.5708</pose>
+        <view_controller>orbit</view_controller>
+      </camera>
+    </gui>
+
+    <!-- Scene Lighting -->
+    <scene>
+      <ambient>0.6 0.6 0.6 1.0</ambient>
+      <background>0.8 0.85 0.9 1.0</background>
+      <shadows>true</shadows>
+      <grid>true</grid>
+    </scene>
+
+    <!-- Boundary Perimeter Walls (50m x 50m) -->
+    <model name="wall_south">
+      <static>true</static>
+      <pose>25.0 0.0 1.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>50.0 0.5 3.0</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>50.0 0.5 3.0</size></box></geometry>
+          <material><ambient>0.4 0.4 0.4 1</ambient><diffuse>0.5 0.5 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_north">
+      <static>true</static>
+      <pose>25.0 50.0 1.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>50.0 0.5 3.0</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>50.0 0.5 3.0</size></box></geometry>
+          <material><ambient>0.4 0.4 0.4 1</ambient><diffuse>0.5 0.5 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_west">
+      <static>true</static>
+      <pose>0.0 25.0 1.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.5 50.0 3.0</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.5 50.0 3.0</size></box></geometry>
+          <material><ambient>0.4 0.4 0.4 1</ambient><diffuse>0.5 0.5 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_east">
+      <static>true</static>
+      <pose>50.0 25.0 1.5 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.5 50.0 3.0</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.5 50.0 3.0</size></box></geometry>
+          <material><ambient>0.4 0.4 0.4 1</ambient><diffuse>0.5 0.5 0.5 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 4 Urban City Blocks / Building Obstacles -->
+    <!-- Block 1: South-West (10m - 22.5m, 10m - 22.5m) -->
+    <model name="building_block_sw">
+      <static>true</static>
+      <pose>16.25 16.25 2.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>12.5 12.5 4.0</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>12.5 12.5 4.0</size></box></geometry>
+          <material><ambient>0.7 0.3 0.2 1</ambient><diffuse>0.8 0.35 0.25 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Block 2: South-East (27.5m - 40.0m, 10m - 22.5m) -->
+    <model name="building_block_se">
+      <static>true</static>
+      <pose>33.75 16.25 2.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>12.5 12.5 4.0</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>12.5 12.5 4.0</size></box></geometry>
+          <material><ambient>0.3 0.5 0.7 1</ambient><diffuse>0.35 0.55 0.8 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Block 3: North-West (10m - 22.5m, 27.5m - 40.0m) -->
+    <model name="building_block_nw">
+      <static>true</static>
+      <pose>16.25 33.75 2.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>12.5 12.5 4.0</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>12.5 12.5 4.0</size></box></geometry>
+          <material><ambient>0.4 0.6 0.4 1</ambient><diffuse>0.45 0.7 0.45 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Block 4: North-East (27.5m - 40.0m, 27.5m - 40.0m) -->
+    <model name="building_block_ne">
+      <static>true</static>
+      <pose>33.75 33.75 2.0 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>12.5 12.5 4.0</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>12.5 12.5 4.0</size></box></geometry>
+          <material><ambient>0.6 0.5 0.3 1</ambient><diffuse>0.7 0.6 0.35 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Target Stolen Vehicle (Dark Gray Sedan, Plate: DXB-88392) at (25.0, 25.0) -->
+    <model name="target_stolen_sedan">
+      <static>true</static>
+      <pose>25.0 25.0 0.45 0 0 0.52</pose>
+      <link name="chassis">
+        <collision name="collision">
+          <geometry><box><size>4.2 1.8 0.9</size></box></geometry>
+        </collision>
+        <visual name="visual_body">
+          <geometry><box><size>4.2 1.8 0.9</size></box></geometry>
+          <material><ambient>0.2 0.2 0.25 1</ambient><diffuse>0.25 0.25 0.3 1</diffuse></material>
+        </visual>
+        <visual name="visual_roof">
+          <pose>-0.2 0 0.6 0 0 0</pose>
+          <geometry><box><size>2.2 1.5 0.5</size></box></geometry>
+          <material><ambient>0.15 0.15 0.18 1</ambient><diffuse>0.18 0.18 0.22 1</diffuse></material>
+        </visual>
+        <!-- License Plate Marker Front -->
+        <visual name="plate_front">
+          <pose>2.11 0 0.0 0 0 0</pose>
+          <geometry><box><size>0.02 0.52 0.16</size></box></geometry>
+          <material><ambient>1.0 1.0 1.0 1</ambient><diffuse>1.0 1.0 1.0 1</diffuse></material>
+        </visual>
+        <!-- License Plate Marker Rear -->
+        <visual name="plate_rear">
+          <pose>-2.11 0 0.0 0 0 0</pose>
+          <geometry><box><size>0.02 0.52 0.16</size></box></geometry>
+          <material><ambient>1.0 0.8 0.0 1</ambient><diffuse>1.0 0.85 0.0 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Civilian Decoy Vehicle 1: White SUV (AD-10294) at (10.0, 25.0) -->
+    <model name="civilian_suv_1">
+      <static>true</static>
+      <pose>10.0 25.0 0.6 0 0 1.57</pose>
+      <link name="chassis">
+        <collision name="collision">
+          <geometry><box><size>4.5 2.0 1.2</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>4.5 2.0 1.2</size></box></geometry>
+          <material><ambient>0.9 0.9 0.9 1</ambient><diffuse>0.95 0.95 0.95 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Civilian Decoy Vehicle 2: Red Sedan (SHJ-44910) at (40.0, 25.0) -->
+    <model name="civilian_sedan_2">
+      <static>true</static>
+      <pose>40.0 25.0 0.45 0 0 -1.57</pose>
+      <link name="chassis">
+        <collision name="collision">
+          <geometry><box><size>4.2 1.8 0.9</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>4.2 1.8 0.9</size></box></geometry>
+          <material><ambient>0.8 0.1 0.1 1</ambient><diffuse>0.9 0.15 0.15 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ==================================================================== -->
+    <!-- 4 SWARMX AUTONOMOUS GROUND VEHICLES (AGVs) WITH DIFF-DRIVE & SENSORS -->
+    <!-- ==================================================================== -->
+
+    <!-- ROBOT 1: Blue AGV (Start: 6.0, 6.0, heading: 0 rad) -->
+    <model name="robot_1">
+      <pose>6.0 6.0 0.08 0 0 0</pose>
+      <link name="base_link">
+        <inertial>
+          <pose>0 0 0.05 0 0 0</pose>
+          <mass>4.0</mass>
+          <inertia>
+            <ixx>0.05</ixx><ixy>0</ixy><ixz>0</ixz>
+            <iyy>0.05</iyy><iyz>0</iyz><izz>0.08</izz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0.06 0 0 0</pose>
+          <geometry><cylinder><radius>0.22</radius><length>0.14</length></cylinder></geometry>
+        </collision>
+        <visual name="chassis_visual">
+          <pose>0 0 0.06 0 0 0</pose>
+          <geometry><cylinder><radius>0.22</radius><length>0.14</length></cylinder></geometry>
+          <material><ambient>0.1 0.4 0.9 1</ambient><diffuse>0.2 0.5 1.0 1</diffuse></material>
+        </visual>
+        <visual name="mast_visual">
+          <pose>0 0 0.16 0 0 0</pose>
+          <geometry><cylinder><radius>0.03</radius><length>0.08</length></cylinder></geometry>
+          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
+        </visual>
+        <visual name="lidar_visual">
+          <pose>0 0 0.22 0 0 0</pose>
+          <geometry><cylinder><radius>0.06</radius><length>0.04</length></cylinder></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+        </visual>
+        <visual name="camera_visual">
+          <pose>0.20 0 0.10 0 0 0</pose>
+          <geometry><box><size>0.06 0.06 0.04</size></box></geometry>
+          <material><ambient>0.9 0.1 0.1 1</ambient><diffuse>1.0 0.1 0.1 1</diffuse></material>
+        </visual>
+        <sensor name="lidar_1" type="gpu_lidar">
+          <pose>0 0 0.22 0 0 0</pose>
+          <topic>/robot_1/scan</topic>
+          <update_rate>10</update_rate>
+          <lidar>
+            <scan>
+              <horizontal>
+                <samples>360</samples>
+                <resolution>1</resolution>
+                <min_angle>-3.14159</min_angle>
+                <max_angle>3.14159</max_angle>
+              </horizontal>
+            </scan>
+            <range>
+              <min>0.15</min>
+              <max>14.0</max>
+              <resolution>0.01</resolution>
+            </range>
+          </lidar>
+          <always_on>1</always_on>
+          <visualize>true</visualize>
+        </sensor>
+        <sensor name="camera_1" type="camera">
+          <pose>0.20 0 0.10 0 0 0</pose>
+          <topic>/robot_1/camera/image_raw</topic>
+          <update_rate>10</update_rate>
+          <camera>
+            <horizontal_fov>1.5707963</horizontal_fov>
+            <image>
+              <width>640</width>
+              <height>480</height>
+              <format>R8G8B8</format>
+            </image>
+            <clip><near>0.1</near><far>25.0</far></clip>
+          </camera>
+          <always_on>1</always_on>
+          <visualize>true</visualize>
+        </sensor>
+      </link>
+
+      <link name="left_wheel">
+        <pose>0 0.20 0 0 0 0</pose>
+        <inertial>
+          <mass>0.5</mass>
+          <inertia><ixx>0.001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.001</iyy><iyz>0</iyz><izz>0.001</izz></inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="right_wheel">
+        <pose>0 -0.20 0 0 0 0</pose>
+        <inertial>
+          <mass>0.5</mass>
+          <inertia><ixx>0.001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.001</iyy><iyz>0</iyz><izz>0.001</izz></inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="front_caster">
+        <pose>0.16 0 -0.04 0 0 0</pose>
+        <inertial><mass>0.1</mass><inertia><ixx>0.0001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.0001</iyy><iyz>0</iyz><izz>0.0001</izz></inertia></inertial>
+        <collision name="collision">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.001</mu><mu2>0.001</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="rear_caster">
+        <pose>-0.16 0 -0.04 0 0 0</pose>
+        <inertial><mass>0.1</mass><inertia><ixx>0.0001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.0001</iyy><iyz>0</iyz><izz>0.0001</izz></inertia></inertial>
+        <collision name="collision">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.001</mu><mu2>0.001</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
+        </visual>
+      </link>
+
+      <joint name="left_wheel_joint" type="revolute">
+        <parent>base_link</parent>
+        <child>left_wheel</child>
+        <axis><xyz>0 1 0</xyz><limit><lower>-1.79769e+308</lower><upper>1.79769e+308</upper></limit></axis>
+      </joint>
+
+      <joint name="right_wheel_joint" type="revolute">
+        <parent>base_link</parent>
+        <child>right_wheel</child>
+        <axis><xyz>0 1 0</xyz><limit><lower>-1.79769e+308</lower><upper>1.79769e+308</upper></limit></axis>
+      </joint>
+
+      <joint name="front_caster_joint" type="ball">
+        <parent>base_link</parent>
+        <child>front_caster</child>
+      </joint>
+
+      <joint name="rear_caster_joint" type="ball">
+        <parent>base_link</parent>
+        <child>rear_caster</child>
+      </joint>
+
+      <plugin
+        filename="ignition-gazebo-diff-drive-system"
+        name="ignition::gazebo::systems::DiffDrive">
+        <left_joint>left_wheel_joint</left_joint>
+        <right_joint>right_wheel_joint</right_joint>
+        <wheel_separation>0.40</wheel_separation>
+        <wheel_radius>0.08</wheel_radius>
+        <max_linear_acceleration>2.0</max_linear_acceleration>
+        <min_linear_acceleration>-2.0</min_linear_acceleration>
+        <max_angular_acceleration>3.0</max_angular_acceleration>
+        <min_angular_acceleration>-3.0</min_angular_acceleration>
+        <topic>/robot_1/cmd_vel</topic>
+        <odom_topic>/robot_1/odom</odom_topic>
+        <frame_id>robot_1/odom</frame_id>
+        <child_frame_id>robot_1/base_link</child_frame_id>
+        <odom_publish_frequency>20</odom_publish_frequency>
+      </plugin>
+    </model>
+
+    <!-- ROBOT 2: Orange AGV (Start: 6.0, 44.0, heading: -1.57 rad) -->
+    <model name="robot_2">
+      <pose>6.0 44.0 0.08 0 0 -1.5708</pose>
+      <link name="base_link">
+        <inertial>
+          <pose>0 0 0.05 0 0 0</pose>
+          <mass>4.0</mass>
+          <inertia>
+            <ixx>0.05</ixx><ixy>0</ixy><ixz>0</ixz>
+            <iyy>0.05</iyy><iyz>0</iyz><izz>0.08</izz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0.06 0 0 0</pose>
+          <geometry><cylinder><radius>0.22</radius><length>0.14</length></cylinder></geometry>
+        </collision>
+        <visual name="chassis_visual">
+          <pose>0 0 0.06 0 0 0</pose>
+          <geometry><cylinder><radius>0.22</radius><length>0.14</length></cylinder></geometry>
+          <material><ambient>0.9 0.4 0.0 1</ambient><diffuse>1.0 0.5 0.0 1</diffuse></material>
+        </visual>
+        <visual name="mast_visual">
+          <pose>0 0 0.16 0 0 0</pose>
+          <geometry><cylinder><radius>0.03</radius><length>0.08</length></cylinder></geometry>
+          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
+        </visual>
+        <visual name="lidar_visual">
+          <pose>0 0 0.22 0 0 0</pose>
+          <geometry><cylinder><radius>0.06</radius><length>0.04</length></cylinder></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+        </visual>
+        <visual name="camera_visual">
+          <pose>0.20 0 0.10 0 0 0</pose>
+          <geometry><box><size>0.06 0.06 0.04</size></box></geometry>
+          <material><ambient>0.9 0.1 0.1 1</ambient><diffuse>1.0 0.1 0.1 1</diffuse></material>
+        </visual>
+        <sensor name="lidar_2" type="gpu_lidar">
+          <pose>0 0 0.22 0 0 0</pose>
+          <topic>/robot_2/scan</topic>
+          <update_rate>10</update_rate>
+          <lidar>
+            <scan>
+              <horizontal>
+                <samples>360</samples>
+                <resolution>1</resolution>
+                <min_angle>-3.14159</min_angle>
+                <max_angle>3.14159</max_angle>
+              </horizontal>
+            </scan>
+            <range>
+              <min>0.15</min>
+              <max>14.0</max>
+              <resolution>0.01</resolution>
+            </range>
+          </lidar>
+          <always_on>1</always_on>
+          <visualize>true</visualize>
+        </sensor>
+        <sensor name="camera_2" type="camera">
+          <pose>0.20 0 0.10 0 0 0</pose>
+          <topic>/robot_2/camera/image_raw</topic>
+          <update_rate>10</update_rate>
+          <camera>
+            <horizontal_fov>1.5707963</horizontal_fov>
+            <image>
+              <width>640</width>
+              <height>480</height>
+              <format>R8G8B8</format>
+            </image>
+            <clip><near>0.1</near><far>25.0</far></clip>
+          </camera>
+          <always_on>1</always_on>
+          <visualize>true</visualize>
+        </sensor>
+      </link>
+
+      <link name="left_wheel">
+        <pose>0 0.20 0 0 0 0</pose>
+        <inertial>
+          <mass>0.5</mass>
+          <inertia><ixx>0.001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.001</iyy><iyz>0</iyz><izz>0.001</izz></inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="right_wheel">
+        <pose>0 -0.20 0 0 0 0</pose>
+        <inertial>
+          <mass>0.5</mass>
+          <inertia><ixx>0.001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.001</iyy><iyz>0</iyz><izz>0.001</izz></inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="front_caster">
+        <pose>0.16 0 -0.04 0 0 0</pose>
+        <inertial><mass>0.1</mass><inertia><ixx>0.0001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.0001</iyy><iyz>0</iyz><izz>0.0001</izz></inertia></inertial>
+        <collision name="collision">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.001</mu><mu2>0.001</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="rear_caster">
+        <pose>-0.16 0 -0.04 0 0 0</pose>
+        <inertial><mass>0.1</mass><inertia><ixx>0.0001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.0001</iyy><iyz>0</iyz><izz>0.0001</izz></inertia></inertial>
+        <collision name="collision">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.001</mu><mu2>0.001</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
+        </visual>
+      </link>
+
+      <joint name="left_wheel_joint" type="revolute">
+        <parent>base_link</parent>
+        <child>left_wheel</child>
+        <axis><xyz>0 1 0</xyz><limit><lower>-1.79769e+308</lower><upper>1.79769e+308</upper></limit></axis>
+      </joint>
+
+      <joint name="right_wheel_joint" type="revolute">
+        <parent>base_link</parent>
+        <child>right_wheel</child>
+        <axis><xyz>0 1 0</xyz><limit><lower>-1.79769e+308</lower><upper>1.79769e+308</upper></limit></axis>
+      </joint>
+
+      <joint name="front_caster_joint" type="ball">
+        <parent>base_link</parent>
+        <child>front_caster</child>
+      </joint>
+
+      <joint name="rear_caster_joint" type="ball">
+        <parent>base_link</parent>
+        <child>rear_caster</child>
+      </joint>
+
+      <plugin
+        filename="ignition-gazebo-diff-drive-system"
+        name="ignition::gazebo::systems::DiffDrive">
+        <left_joint>left_wheel_joint</left_joint>
+        <right_joint>right_wheel_joint</right_joint>
+        <wheel_separation>0.40</wheel_separation>
+        <wheel_radius>0.08</wheel_radius>
+        <max_linear_acceleration>2.0</max_linear_acceleration>
+        <min_linear_acceleration>-2.0</min_linear_acceleration>
+        <max_angular_acceleration>3.0</max_angular_acceleration>
+        <min_angular_acceleration>-3.0</min_angular_acceleration>
+        <topic>/robot_2/cmd_vel</topic>
+        <odom_topic>/robot_2/odom</odom_topic>
+        <frame_id>robot_2/odom</frame_id>
+        <child_frame_id>robot_2/base_link</child_frame_id>
+        <odom_publish_frequency>20</odom_publish_frequency>
+      </plugin>
+    </model>
+
+    <!-- ROBOT 3: Green AGV (Start: 44.0, 6.0, heading: 1.57 rad) -->
+    <model name="robot_3">
+      <pose>44.0 6.0 0.08 0 0 1.5708</pose>
+      <link name="base_link">
+        <inertial>
+          <pose>0 0 0.05 0 0 0</pose>
+          <mass>4.0</mass>
+          <inertia>
+            <ixx>0.05</ixx><ixy>0</ixy><ixz>0</ixz>
+            <iyy>0.05</iyy><iyz>0</iyz><izz>0.08</izz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0.06 0 0 0</pose>
+          <geometry><cylinder><radius>0.22</radius><length>0.14</length></cylinder></geometry>
+        </collision>
+        <visual name="chassis_visual">
+          <pose>0 0 0.06 0 0 0</pose>
+          <geometry><cylinder><radius>0.22</radius><length>0.14</length></cylinder></geometry>
+          <material><ambient>0.1 0.7 0.2 1</ambient><diffuse>0.15 0.85 0.25 1</diffuse></material>
+        </visual>
+        <visual name="mast_visual">
+          <pose>0 0 0.16 0 0 0</pose>
+          <geometry><cylinder><radius>0.03</radius><length>0.08</length></cylinder></geometry>
+          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
+        </visual>
+        <visual name="lidar_visual">
+          <pose>0 0 0.22 0 0 0</pose>
+          <geometry><cylinder><radius>0.06</radius><length>0.04</length></cylinder></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+        </visual>
+        <visual name="camera_visual">
+          <pose>0.20 0 0.10 0 0 0</pose>
+          <geometry><box><size>0.06 0.06 0.04</size></box></geometry>
+          <material><ambient>0.9 0.1 0.1 1</ambient><diffuse>1.0 0.1 0.1 1</diffuse></material>
+        </visual>
+        <sensor name="lidar_3" type="gpu_lidar">
+          <pose>0 0 0.22 0 0 0</pose>
+          <topic>/robot_3/scan</topic>
+          <update_rate>10</update_rate>
+          <lidar>
+            <scan>
+              <horizontal>
+                <samples>360</samples>
+                <resolution>1</resolution>
+                <min_angle>-3.14159</min_angle>
+                <max_angle>3.14159</max_angle>
+              </horizontal>
+            </scan>
+            <range>
+              <min>0.15</min>
+              <max>14.0</max>
+              <resolution>0.01</resolution>
+            </range>
+          </lidar>
+          <always_on>1</always_on>
+          <visualize>true</visualize>
+        </sensor>
+        <sensor name="camera_3" type="camera">
+          <pose>0.20 0 0.10 0 0 0</pose>
+          <topic>/robot_3/camera/image_raw</topic>
+          <update_rate>10</update_rate>
+          <camera>
+            <horizontal_fov>1.5707963</horizontal_fov>
+            <image>
+              <width>640</width>
+              <height>480</height>
+              <format>R8G8B8</format>
+            </image>
+            <clip><near>0.1</near><far>25.0</far></clip>
+          </camera>
+          <always_on>1</always_on>
+          <visualize>true</visualize>
+        </sensor>
+      </link>
+
+      <link name="left_wheel">
+        <pose>0 0.20 0 0 0 0</pose>
+        <inertial>
+          <mass>0.5</mass>
+          <inertia><ixx>0.001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.001</iyy><iyz>0</iyz><izz>0.001</izz></inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="right_wheel">
+        <pose>0 -0.20 0 0 0 0</pose>
+        <inertial>
+          <mass>0.5</mass>
+          <inertia><ixx>0.001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.001</iyy><iyz>0</iyz><izz>0.001</izz></inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="front_caster">
+        <pose>0.16 0 -0.04 0 0 0</pose>
+        <inertial><mass>0.1</mass><inertia><ixx>0.0001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.0001</iyy><iyz>0</iyz><izz>0.0001</izz></inertia></inertial>
+        <collision name="collision">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.001</mu><mu2>0.001</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="rear_caster">
+        <pose>-0.16 0 -0.04 0 0 0</pose>
+        <inertial><mass>0.1</mass><inertia><ixx>0.0001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.0001</iyy><iyz>0</iyz><izz>0.0001</izz></inertia></inertial>
+        <collision name="collision">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.001</mu><mu2>0.001</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
+        </visual>
+      </link>
+
+      <joint name="left_wheel_joint" type="revolute">
+        <parent>base_link</parent>
+        <child>left_wheel</child>
+        <axis><xyz>0 1 0</xyz><limit><lower>-1.79769e+308</lower><upper>1.79769e+308</upper></limit></axis>
+      </joint>
+
+      <joint name="right_wheel_joint" type="revolute">
+        <parent>base_link</parent>
+        <child>right_wheel</child>
+        <axis><xyz>0 1 0</xyz><limit><lower>-1.79769e+308</lower><upper>1.79769e+308</upper></limit></axis>
+      </joint>
+
+      <joint name="front_caster_joint" type="ball">
+        <parent>base_link</parent>
+        <child>front_caster</child>
+      </joint>
+
+      <joint name="rear_caster_joint" type="ball">
+        <parent>base_link</parent>
+        <child>rear_caster</child>
+      </joint>
+
+      <plugin
+        filename="ignition-gazebo-diff-drive-system"
+        name="ignition::gazebo::systems::DiffDrive">
+        <left_joint>left_wheel_joint</left_joint>
+        <right_joint>right_wheel_joint</right_joint>
+        <wheel_separation>0.40</wheel_separation>
+        <wheel_radius>0.08</wheel_radius>
+        <max_linear_acceleration>2.0</max_linear_acceleration>
+        <min_linear_acceleration>-2.0</min_linear_acceleration>
+        <max_angular_acceleration>3.0</max_angular_acceleration>
+        <min_angular_acceleration>-3.0</min_angular_acceleration>
+        <topic>/robot_3/cmd_vel</topic>
+        <odom_topic>/robot_3/odom</odom_topic>
+        <frame_id>robot_3/odom</frame_id>
+        <child_frame_id>robot_3/base_link</child_frame_id>
+        <odom_publish_frequency>20</odom_publish_frequency>
+      </plugin>
+    </model>
+
+    <!-- ROBOT 4: Purple AGV (Start: 44.0, 44.0, heading: 3.14 rad) -->
+    <model name="robot_4">
+      <pose>44.0 44.0 0.08 0 0 3.14159</pose>
+      <link name="base_link">
+        <inertial>
+          <pose>0 0 0.05 0 0 0</pose>
+          <mass>4.0</mass>
+          <inertia>
+            <ixx>0.05</ixx><ixy>0</ixy><ixz>0</ixz>
+            <iyy>0.05</iyy><iyz>0</iyz><izz>0.08</izz>
+          </inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0.06 0 0 0</pose>
+          <geometry><cylinder><radius>0.22</radius><length>0.14</length></cylinder></geometry>
+        </collision>
+        <visual name="chassis_visual">
+          <pose>0 0 0.06 0 0 0</pose>
+          <geometry><cylinder><radius>0.22</radius><length>0.14</length></cylinder></geometry>
+          <material><ambient>0.6 0.1 0.7 1</ambient><diffuse>0.7 0.2 0.8 1</diffuse></material>
+        </visual>
+        <visual name="mast_visual">
+          <pose>0 0 0.16 0 0 0</pose>
+          <geometry><cylinder><radius>0.03</radius><length>0.08</length></cylinder></geometry>
+          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.3 0.3 0.3 1</diffuse></material>
+        </visual>
+        <visual name="lidar_visual">
+          <pose>0 0 0.22 0 0 0</pose>
+          <geometry><cylinder><radius>0.06</radius><length>0.04</length></cylinder></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+        </visual>
+        <visual name="camera_visual">
+          <pose>0.20 0 0.10 0 0 0</pose>
+          <geometry><box><size>0.06 0.06 0.04</size></box></geometry>
+          <material><ambient>0.9 0.1 0.1 1</ambient><diffuse>1.0 0.1 0.1 1</diffuse></material>
+        </visual>
+        <sensor name="lidar_4" type="gpu_lidar">
+          <pose>0 0 0.22 0 0 0</pose>
+          <topic>/robot_4/scan</topic>
+          <update_rate>10</update_rate>
+          <lidar>
+            <scan>
+              <horizontal>
+                <samples>360</samples>
+                <resolution>1</resolution>
+                <min_angle>-3.14159</min_angle>
+                <max_angle>3.14159</max_angle>
+              </horizontal>
+            </scan>
+            <range>
+              <min>0.15</min>
+              <max>14.0</max>
+              <resolution>0.01</resolution>
+            </range>
+          </lidar>
+          <always_on>1</always_on>
+          <visualize>true</visualize>
+        </sensor>
+        <sensor name="camera_4" type="camera">
+          <pose>0.20 0 0.10 0 0 0</pose>
+          <topic>/robot_4/camera/image_raw</topic>
+          <update_rate>10</update_rate>
+          <camera>
+            <horizontal_fov>1.5707963</horizontal_fov>
+            <image>
+              <width>640</width>
+              <height>480</height>
+              <format>R8G8B8</format>
+            </image>
+            <clip><near>0.1</near><far>25.0</far></clip>
+          </camera>
+          <always_on>1</always_on>
+          <visualize>true</visualize>
+        </sensor>
+      </link>
+
+      <link name="left_wheel">
+        <pose>0 0.20 0 0 0 0</pose>
+        <inertial>
+          <mass>0.5</mass>
+          <inertia><ixx>0.001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.001</iyy><iyz>0</iyz><izz>0.001</izz></inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="right_wheel">
+        <pose>0 -0.20 0 0 0 0</pose>
+        <inertial>
+          <mass>0.5</mass>
+          <inertia><ixx>0.001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.001</iyy><iyz>0</iyz><izz>0.001</izz></inertia>
+        </inertial>
+        <collision name="collision">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <surface><friction><ode><mu>1.5</mu><mu2>1.5</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <pose>0 0 0 1.57079632679 0 0</pose>
+          <geometry><cylinder><radius>0.08</radius><length>0.04</length></cylinder></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.15 0.15 0.15 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="front_caster">
+        <pose>0.16 0 -0.04 0 0 0</pose>
+        <inertial><mass>0.1</mass><inertia><ixx>0.0001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.0001</iyy><iyz>0</iyz><izz>0.0001</izz></inertia></inertial>
+        <collision name="collision">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.001</mu><mu2>0.001</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
+        </visual>
+      </link>
+
+      <link name="rear_caster">
+        <pose>-0.16 0 -0.04 0 0 0</pose>
+        <inertial><mass>0.1</mass><inertia><ixx>0.0001</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.0001</iyy><iyz>0</iyz><izz>0.0001</izz></inertia></inertial>
+        <collision name="collision">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <surface><friction><ode><mu>0.001</mu><mu2>0.001</mu2></ode></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><sphere><radius>0.04</radius></sphere></geometry>
+          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
+        </visual>
+      </link>
+
+      <joint name="left_wheel_joint" type="revolute">
+        <parent>base_link</parent>
+        <child>left_wheel</child>
+        <axis><xyz>0 1 0</xyz><limit><lower>-1.79769e+308</lower><upper>1.79769e+308</upper></limit></axis>
+      </joint>
+
+      <joint name="right_wheel_joint" type="revolute">
+        <parent>base_link</parent>
+        <child>right_wheel</child>
+        <axis><xyz>0 1 0</xyz><limit><lower>-1.79769e+308</lower><upper>1.79769e+308</upper></limit></axis>
+      </joint>
+
+      <joint name="front_caster_joint" type="ball">
+        <parent>base_link</parent>
+        <child>front_caster</child>
+      </joint>
+
+      <joint name="rear_caster_joint" type="ball">
+        <parent>base_link</parent>
+        <child>rear_caster</child>
+      </joint>
+
+      <plugin
+        filename="ignition-gazebo-diff-drive-system"
+        name="ignition::gazebo::systems::DiffDrive">
+        <left_joint>left_wheel_joint</left_joint>
+        <right_joint>right_wheel_joint</right_joint>
+        <wheel_separation>0.40</wheel_separation>
+        <wheel_radius>0.08</wheel_radius>
+        <max_linear_acceleration>2.0</max_linear_acceleration>
+        <min_linear_acceleration>-2.0</min_linear_acceleration>
+        <max_angular_acceleration>3.0</max_angular_acceleration>
+        <min_angular_acceleration>-3.0</min_angular_acceleration>
+        <topic>/robot_4/cmd_vel</topic>
+        <odom_topic>/robot_4/odom</odom_topic>
+        <frame_id>robot_4/odom</frame_id>
+        <child_frame_id>robot_4/base_link</child_frame_id>
+        <odom_publish_frequency>20</odom_publish_frequency>
+      </plugin>
+    </model>
+
+  </world>
+</sdf>

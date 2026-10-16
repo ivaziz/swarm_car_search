@@ -41,3 +41,8 @@ output/*
 .env
 .env.*
 !.env.example
+
+# ROS 2 generated files
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/

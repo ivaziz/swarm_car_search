@@ -69,6 +69,7 @@ class SwarmState:
         timestamp: float,
         battery_level: float = 1.0,
         assigned_task_id: Optional[str] = None,
+        **kwargs: Any,
     ) -> None:
         """Updates or registers a peer robot state from a received heartbeat."""
         self.peers[robot_id] = RobotPeerState(
@@ -80,6 +81,7 @@ class SwarmState:
             last_heartbeat=timestamp,
             is_active=True,
         )
+
 
     def mark_peer_inactive(self, robot_id: str) -> None:
         """Marks a peer as inactive / failed after heartbeat timeout."""
