@@ -91,6 +91,10 @@ class NearestFrontierStrategy(ITaskAllocationStrategy):
         available_tasks: List[SearchTask],
         swarm_state: Optional[SwarmState] = None,
         pheromone_map: Optional[PheromoneMap] = None,
+        target_probability_map: Optional[Any] = None,
+        search_memory: Optional[Any] = None,
+        battery_level: float = 1.0,
+        **kwargs: Any,
     ) -> Optional[SearchTask]:
         pending = [t for t in available_tasks if t.status == TaskStatus.PENDING]
         if not pending:
@@ -123,6 +127,10 @@ class RandomAllocationStrategy(ITaskAllocationStrategy):
         available_tasks: List[SearchTask],
         swarm_state: Optional[SwarmState] = None,
         pheromone_map: Optional[PheromoneMap] = None,
+        target_probability_map: Optional[Any] = None,
+        search_memory: Optional[Any] = None,
+        battery_level: float = 1.0,
+        **kwargs: Any,
     ) -> Optional[SearchTask]:
         pending = [t for t in available_tasks if t.status == TaskStatus.PENDING]
         if not pending:

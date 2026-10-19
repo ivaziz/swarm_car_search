@@ -23,6 +23,9 @@ class TestPackageImports(unittest.TestCase):
             "simulation",
             "visualization",
             "evaluation",
+            "evaluation.metrics_collector",
+            "evaluation.baselines",
+            "evaluation.ai_benchmarks",
             "scripts",
         ]
         for pkg in packages:

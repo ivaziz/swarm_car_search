@@ -12,14 +12,14 @@ The SwarmX quality assurance architecture encompasses 112 automated unit and int
 
 ---
 
-## 2. Test Inventory Breakdown (112 Tests Across 15 Modules)
+## 2. Test Inventory Breakdown (127 Tests Across 15 Modules)
 
 | Test Module | Test Class | Methods Count | Scope & Verification Objective | Source File |
 | :--- | :--- | :---: | :--- | :--- |
 | `test_aco_engine.py` | `TestACOEngine` | 12 | Validates Boltzmann Softmax distribution, $\varepsilon$-greedy exploration, ranking order, and task filtering. | [`tests/test_aco_engine.py`](file:///Users/aziz/Desktop/swarm_car_search/tests/test_aco_engine.py) |
 | `test_communication.py` | `TestLocalMessageBus`, `TestSimulatedNetworkChannel`, `TestRobotAgentComm` | 6 | Validates unicast, broadcast, network latency delay queues, packet loss rates, and radio range filtering. | [`tests/test_communication.py`](file:///Users/aziz/Desktop/swarm_car_search/tests/test_communication.py) |
 | `test_data_structures.py` | `TestRobotStates`, `TestSearchTask`, `TestSwarmMessages`, `TestSwarmState`, `TestBaseSLAMProvider` | 11 | Validates FSM transition validity, JSON round-trip serialization, and peer heartbeat state tracking. | [`tests/test_data_structures.py`](file:///Users/aziz/Desktop/swarm_car_search/tests/test_data_structures.py) |
-| `test_evaluation.py` | `TestStrategyFactory`, `TestMetricsCollector`, `TestBenchmarkExecution` | 6 | Validates strategy instantiation, trajectory distance accumulation, overlap ratios, and Monte Carlo aggregation. | [`tests/test_evaluation.py`](file:///Users/aziz/Desktop/swarm_car_search/tests/test_evaluation.py) |
+| `test_evaluation.py` | `TestStrategyFactory`, `TestMetricsCollector`, `TestBenchmarkExecution` | 21 | Validates strategy instantiation, trajectory distance accumulation, inter-robot overlap ratios, temporal revisit rates, intra-robot self-revisits, and Monte Carlo aggregation. | [`tests/test_evaluation.py`](file:///Users/aziz/Desktop/swarm_car_search/tests/test_evaluation.py) |
 | `test_failure_handling.py` | `TestFailureDetector`, `TestRecoveryManager`, `TestSwarmCoordinatorResilience` | 9 | Validates heartbeat timeout detection, battery cutoffs, motion stall monitoring, and dynamic orphan task reclamation. | [`tests/test_failure_handling.py`](file:///Users/aziz/Desktop/swarm_car_search/tests/test_failure_handling.py) |
 | `test_imports.py` | `TestPackageImports` | 2 | Validates that all top-level packages (`swarm`, `perception`, `simulation`, `interfaces`) import cleanly. | [`tests/test_imports.py`](file:///Users/aziz/Desktop/swarm_car_search/tests/test_imports.py) |
 | `test_interfaces.py` | `TestInterfaces` | 5 | Validates ABC abstraction constraints, `Pose2D` immutability, `OccupancyGrid2D` indexing, and event structures. | [`tests/test_interfaces.py`](file:///Users/aziz/Desktop/swarm_car_search/tests/test_interfaces.py) |

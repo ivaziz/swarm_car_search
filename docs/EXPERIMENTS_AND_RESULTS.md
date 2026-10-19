@@ -12,8 +12,18 @@ All experiments evaluate autonomous vehicle search operations in a standardized 
 * **Target Discovery Rate (%)**: Percentage of simulation trials where the stolen vehicle (`DXB-88392`) was successfully verified ($C_{\text{target}} \ge 0.80$).
 * **Time-to-Detection (TTD, s)**: Simulation time in seconds from mission start until confirmed target acquisition.
 * **Exploration Coverage (%)**: Proportion of navigable free cells observed by the swarm's collective sensors.
-* **Trajectory Overlap Ratio (%)**: Measure of redundant multi-agent search overlap:
-  $$\text{Overlap} = \frac{\sum_{c} \max(0, N_{\text{visits}}(c) - 1)}{\sum_c N_{\text{visits}}(c)}$$
+* **Inter-Robot Trajectory Overlap Ratio (%)**: Measure of redundant multi-agent search footprint overlap:
+  $$\mathcal{O}_{\text{inter}} = \frac{\sum_{c \in C} \max(0, |\mathcal{R}(c)| - 1)}{\sum_{c \in C} |\mathcal{R}(c)|} = 1 - \frac{|C|}{\sum_{r \in \mathcal{R}} |C_r|}$$
+  where $C$ is the set of unique visited spatial bins, $|\mathcal{R}(c)|$ is the count of distinct robots visiting bin $c$, and $C_r$ is the unique footprint of robot $r$.
+* **Inter-Robot Shared Area Ratio (%)**: Fraction of collective explored territory traversed by multiple distinct robots:
+  $$\mathcal{S}_{\text{inter}} = \frac{|\{c \in C \mid |\mathcal{R}(c)| \ge 2\}|}{|C|}$$
+* **Temporal Revisit Rate (%)**: Measure of redundant temporal re-visitation across the fleet (any entry into an already-visited cell):
+  $$\mathcal{R}_{\text{temporal}} = \frac{V_{\text{total}} - |C|}{V_{\text{total}}} = 1 - \frac{|C|}{V_{\text{total}}}$$
+  where $V_{\text{total}} = \sum_{r \in \mathcal{R}} V_r$ is the total count of discrete cell transition/entry events across all robots.
+* **Intra-Robot Self-Revisit Rate (%)**: Proportion of cell-entry events where a robot enters a cell it previously visited itself:
+  $$\mathcal{R}_{\text{intra}} = \frac{\sum_{r \in \mathcal{R}} (V_r - |C_r|)}{V_{\text{total}}}$$
+* **Fleet Entry Decomposition Theorem**: The non-novel entries across the fleet decompose exactly into intra-robot self-revisits and inter-robot initial footprint duplications:
+  $$\underbrace{V_{\text{total}} - |C|}_{\text{Fleet Non-Novel Entries}} \equiv \underbrace{\sum_{r \in \mathcal{R}} (V_r - |C_r|)}_{\text{Intra-Robot Self-Revisits}} + \underbrace{\left( \sum_{r \in \mathcal{R}} |C_r| - |C| \right)}_{\text{Inter-Robot Footprint Duplicates}}$$
 * **Total Distance Traveled (m)**: Cumulative odometric distance covered across all active fleet members.
 * **Dynamic Reassignments**: Count of search task reallocations triggered by proximity shifts or peer failures.
 * **Failure Recovery Latency (s)**: Elapsed time between a robot hardware failure and orphan task re-dispatch.
@@ -88,6 +98,11 @@ To maintain strict scientific and documentation integrity, the evaluation method
 4. **Inference Latency & Throughput ($0.049\,\text{ms}$, $20,350\,\text{FPS}$)**:
    - In `evaluation/ai_benchmarks.py:210-219`, latency is benchmarked over 100 iterations of **in-memory Python math** (geometric raycasting range/bearing checks, dictionary lookups, normalized edit distances, and RGB Euclidean vector math) running on the host CPU.
    - This measures algorithm execution speed in the pure Python simulator; it **does NOT** represent deep learning computer vision inference (such as YOLOv8, MobileNet, or LPRNet) running on an edge GPU or NPU. Edge deep neural network vision pipelines typically operate at 30–120 FPS ($8\text{--}33\,\text{ms}$).
+
+5. **Trajectory Overlap & Temporal Revisit Metric Audit (Audited on 2026-10-19)**:
+   - **Historical Metric Definition**: Historical benchmark summaries (e.g., Section 2.3 `Redundant Trajectory Ratio: 1.51%` and historical artifacts in `output/ai_benchmark_report.json`, `output/test_eval_120/`, and `output/benchmark_run/`) were computed strictly under the **Inter-Robot Footprint Redundancy** definition ($\mathcal{O}_{\text{inter}} = 1 - \frac{|C|}{\sum_{r} |C_r|}$), counting distinct visiting robot IDs per cell.
+   - **Scientific Scope**: This historical metric measures spatial footprint duplication between distinct swarm agents, but it **does not** capture temporal revisitation (a single robot looping or retracing its path over previously visited cells).
+   - **Non-destructive Reporting**: Historical artifacts and legacy benchmark results are preserved intact without retroactive alteration. To measure both multi-robot spatial overlap ($\mathcal{O}_{\text{inter}}$) and transition-based temporal revisit rate ($\mathcal{R}_{\text{temporal}}$), the benchmark suite can be rerun via `python3 scripts/evaluate_ai_benchmarks.py` and `python3 scripts/run_evaluation.py`.
 
 ---
 

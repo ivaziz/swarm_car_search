@@ -5,7 +5,7 @@ and multi-robot swarm metrics (Coverage, TTD, Distance, Overlap, Reassignments, 
 across deterministic scenarios A through H.
 """
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, asdict, fields
 from typing import Dict, List, Optional, Tuple, Any
 import time
 import math
@@ -47,9 +47,24 @@ class ScenarioBenchmarkResult:
     detections_count: int
     false_positives_count: int
     wall_clock_sec: float
+    # Trajectory and revisit metrics (Optional for backward compatibility with historical logs)
+    inter_robot_overlap_ratio: Optional[float] = None
+    shared_cells_ratio: Optional[float] = None
+    temporal_revisit_rate: Optional[float] = None
+    intra_robot_self_revisit_rate: Optional[float] = None
+    total_cell_visits: Optional[int] = None
+    revisit_events_count: Optional[int] = None
+    intra_robot_revisits: Optional[int] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ScenarioBenchmarkResult":
+        """Safely instantiates ScenarioBenchmarkResult from dictionary, supporting legacy JSON logs."""
+        valid_fields = {f.name for f in fields(cls)}
+        filtered = {k: v for k, v in data.items() if k in valid_fields}
+        return cls(**filtered)
 
 
 @dataclass
@@ -72,8 +87,23 @@ class ComprehensiveAIBenchmarkReport:
     avg_time_to_target_s: float = 0.0
     avg_distance_traveled_m: float = 0.0
     avg_redundant_exploration_pct: float = 0.0
+    avg_inter_robot_overlap_pct: Optional[float] = None
+    avg_shared_cells_pct: Optional[float] = None
+    avg_temporal_revisit_pct: Optional[float] = None
+    avg_intra_robot_self_revisit_pct: Optional[float] = None
     total_failures_recovered: int = 0
     total_reassignments: int = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "ComprehensiveAIBenchmarkReport":
+        """Safely instantiates ComprehensiveAIBenchmarkReport from dictionary."""
+        valid_fields = {f.name for f in fields(cls)}
+        filtered = {k: v for k, v in data.items() if k in valid_fields and k != "scenarios_evaluated"}
+        scenarios = [ScenarioBenchmarkResult.from_dict(s) for s in data.get("scenarios", data.get("scenarios_evaluated", []))]
+        return cls(scenarios_evaluated=scenarios, **filtered)
 
 
 def run_scenario_benchmark(
@@ -176,6 +206,13 @@ def run_scenario_benchmark(
         detections_count=status["total_vehicle_detections"],
         false_positives_count=status["total_false_positives"],
         wall_clock_sec=round(wall_sec, 3),
+        inter_robot_overlap_ratio=round(metrics.inter_robot_overlap_ratio, 3) if metrics.inter_robot_overlap_ratio is not None else None,
+        shared_cells_ratio=round(metrics.shared_cells_ratio, 3) if metrics.shared_cells_ratio is not None else None,
+        temporal_revisit_rate=round(metrics.temporal_revisit_rate, 3) if metrics.temporal_revisit_rate is not None else None,
+        intra_robot_self_revisit_rate=round(metrics.intra_robot_self_revisit_rate, 3) if metrics.intra_robot_self_revisit_rate is not None else None,
+        total_cell_visits=metrics.total_cell_visits,
+        revisit_events_count=metrics.revisit_events_count,
+        intra_robot_revisits=metrics.intra_robot_revisits,
     )
 
 
@@ -239,6 +276,10 @@ def evaluate_all_scenarios() -> ComprehensiveAIBenchmarkReport:
     ttds = [r.time_to_detection for r in results if r.time_to_detection is not None]
     distances = [r.total_distance_m for r in results]
     overlaps = [r.redundancy_ratio * 100.0 for r in results]
+    inter_overlaps = [r.inter_robot_overlap_ratio * 100.0 for r in results if r.inter_robot_overlap_ratio is not None]
+    shared_ratios = [r.shared_cells_ratio * 100.0 for r in results if r.shared_cells_ratio is not None]
+    temp_revisits = [r.temporal_revisit_rate * 100.0 for r in results if r.temporal_revisit_rate is not None]
+    self_revisits = [r.intra_robot_self_revisit_rate * 100.0 for r in results if r.intra_robot_self_revisit_rate is not None]
     tot_rec = sum(r.recovered_tasks for r in results)
     tot_reassign = sum(r.reassignment_count for r in results)
 
@@ -258,6 +299,10 @@ def evaluate_all_scenarios() -> ComprehensiveAIBenchmarkReport:
         avg_time_to_target_s=round(float(np.mean(ttds)) if ttds else 0.0, 2),
         avg_distance_traveled_m=round(float(np.mean(distances)), 2),
         avg_redundant_exploration_pct=round(float(np.mean(overlaps)), 2),
+        avg_inter_robot_overlap_pct=round(float(np.mean(inter_overlaps)), 2) if inter_overlaps else None,
+        avg_shared_cells_pct=round(float(np.mean(shared_ratios)), 2) if shared_ratios else None,
+        avg_temporal_revisit_pct=round(float(np.mean(temp_revisits)), 2) if temp_revisits else None,
+        avg_intra_robot_self_revisit_pct=round(float(np.mean(self_revisits)), 2) if self_revisits else None,
         total_failures_recovered=tot_rec,
         total_reassignments=tot_reassign,
     )

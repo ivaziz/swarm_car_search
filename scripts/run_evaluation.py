@@ -237,6 +237,13 @@ def aggregate_strategy_metrics(metrics_list: List[MissionMetrics]) -> Dict[str, 
     coverage_vals = [m.final_exploration_ratio * 100.0 for m in metrics_list]
     exp_rate_vals = [m.exploration_rate_m2_per_sec for m in metrics_list]
     overlap_vals = [m.overlap_ratio * 100.0 for m in metrics_list]
+    inter_overlap_vals = [m.inter_robot_overlap_ratio * 100.0 for m in metrics_list if getattr(m, "inter_robot_overlap_ratio", None) is not None]
+    shared_ratio_vals = [m.shared_cells_ratio * 100.0 for m in metrics_list if getattr(m, "shared_cells_ratio", None) is not None]
+    temporal_revisit_vals = [m.temporal_revisit_rate * 100.0 for m in metrics_list if getattr(m, "temporal_revisit_rate", None) is not None]
+    self_revisit_vals = [m.intra_robot_self_revisit_rate * 100.0 for m in metrics_list if getattr(m, "intra_robot_self_revisit_rate", None) is not None]
+    total_visits_vals = [m.total_cell_visits for m in metrics_list if getattr(m, "total_cell_visits", None) is not None]
+    revisit_events_vals = [m.revisit_events_count for m in metrics_list if getattr(m, "revisit_events_count", None) is not None]
+    intra_revisit_vals = [m.intra_robot_revisits for m in metrics_list if getattr(m, "intra_robot_revisits", None) is not None]
     dist_vals = [m.total_distance_traveled for m in metrics_list]
     energy_vals = [m.total_energy_consumed for m in metrics_list]
     tasks_vals = [m.tasks_completed for m in metrics_list]
@@ -256,6 +263,22 @@ def aggregate_strategy_metrics(metrics_list: List[MissionMetrics]) -> Dict[str, 
     mean_expr = statistics.mean(exp_rate_vals)
     mean_overlap = statistics.mean(overlap_vals)
     std_overlap = statistics.stdev(overlap_vals) if n > 1 else 0.0
+
+    mean_inter_overlap = statistics.mean(inter_overlap_vals) if inter_overlap_vals else (mean_overlap if any(getattr(m, "inter_robot_overlap_ratio", None) is not None for m in metrics_list) else None)
+    std_inter_overlap = statistics.stdev(inter_overlap_vals) if len(inter_overlap_vals) > 1 else 0.0
+
+    mean_shared_ratio = statistics.mean(shared_ratio_vals) if shared_ratio_vals else (0.0 if any(getattr(m, "shared_cells_ratio", None) is not None for m in metrics_list) else None)
+    std_shared_ratio = statistics.stdev(shared_ratio_vals) if len(shared_ratio_vals) > 1 else 0.0
+
+    mean_temporal_revisit = statistics.mean(temporal_revisit_vals) if temporal_revisit_vals else (0.0 if any(getattr(m, "temporal_revisit_rate", None) is not None for m in metrics_list) else None)
+    std_temporal_revisit = statistics.stdev(temporal_revisit_vals) if len(temporal_revisit_vals) > 1 else 0.0
+
+    mean_self_revisit = statistics.mean(self_revisit_vals) if self_revisit_vals else (0.0 if any(getattr(m, "intra_robot_self_revisit_rate", None) is not None for m in metrics_list) else None)
+    std_self_revisit = statistics.stdev(self_revisit_vals) if len(self_revisit_vals) > 1 else 0.0
+
+    mean_total_visits = statistics.mean(total_visits_vals) if total_visits_vals else None
+    mean_revisit_events = statistics.mean(revisit_events_vals) if revisit_events_vals else None
+    mean_intra_revisits = statistics.mean(intra_revisit_vals) if intra_revisit_vals else None
 
     mean_dist = statistics.mean(dist_vals)
     std_dist = statistics.stdev(dist_vals) if n > 1 else 0.0
@@ -294,6 +317,17 @@ def aggregate_strategy_metrics(metrics_list: List[MissionMetrics]) -> Dict[str, 
         "mean_exploration_rate_m2_per_sec": mean_expr,
         "mean_overlap_ratio_pct": mean_overlap,
         "std_overlap_ratio_pct": std_overlap,
+        "mean_inter_robot_overlap_ratio_pct": mean_inter_overlap,
+        "std_inter_robot_overlap_ratio_pct": std_inter_overlap,
+        "mean_shared_cells_ratio_pct": mean_shared_ratio,
+        "std_shared_cells_ratio_pct": std_shared_ratio,
+        "mean_temporal_revisit_rate_pct": mean_temporal_revisit,
+        "std_temporal_revisit_rate_pct": std_temporal_revisit,
+        "mean_intra_robot_self_revisit_rate_pct": mean_self_revisit,
+        "std_intra_robot_self_revisit_rate_pct": std_self_revisit,
+        "mean_total_cell_visits": mean_total_visits,
+        "mean_revisit_events_count": mean_revisit_events,
+        "mean_intra_robot_revisits": mean_intra_revisits,
         "mean_distance_traveled_m": mean_dist,
         "std_distance_traveled_m": std_dist,
         "mean_energy_consumed": mean_energy,
@@ -377,9 +411,21 @@ def generate_markdown_report(results: Dict[str, Dict[str, Any]], args: argparse.
     row = " | ".join([fmt_val(results[s], 'mean_exploration_rate_m2_per_sec', ' m²/s') for s in strat_names])
     lines.append(f"| **Exploration Rate (m²/s)** | {row} |")
 
-    # Row 6: Trajectory Overlap Ratio
+    # Row 6: Trajectory Overlap Ratio (Inter-Robot Footprint Redundancy)
     row = " | ".join([fmt_mean_std(results[s], 'mean_overlap_ratio_pct', 'std_overlap_ratio_pct', '%') for s in strat_names])
     lines.append(f"| **Trajectory Overlap Ratio (%)** | {row} |")
+
+    # Row 6b: Inter-Robot Shared Area Ratio
+    row_shared = " | ".join([fmt_mean_std(results[s], 'mean_shared_cells_ratio_pct', 'std_shared_cells_ratio_pct', '%') for s in strat_names])
+    lines.append(f"| **Inter-Robot Shared Area (%)** | {row_shared} |")
+
+    # Row 6c: Temporal Revisit Rate
+    row_temp = " | ".join([fmt_mean_std(results[s], 'mean_temporal_revisit_rate_pct', 'std_temporal_revisit_rate_pct', '%') for s in strat_names])
+    lines.append(f"| **Temporal Revisit Rate (%)** | {row_temp} |")
+
+    # Row 6d: Intra-Robot Self-Revisit Rate
+    row_self = " | ".join([fmt_mean_std(results[s], 'mean_intra_robot_self_revisit_rate_pct', 'std_intra_robot_self_revisit_rate_pct', '%') for s in strat_names])
+    lines.append(f"| **Intra-Robot Self-Revisit Rate (%)** | {row_self} |")
 
     # Row 7: Total Distance Traveled
     row = " | ".join([fmt_mean_std(results[s], 'mean_distance_traveled_m', 'std_distance_traveled_m', 'm') for s in strat_names])
